@@ -68,7 +68,7 @@ void destroyClk(bool terminateAll)
         killpg(getpgrp(), SIGINT);
     }
 }
-
+// This is our process struct, it encapsulates all the necessary data to describe a process
 struct process
 {
     int id;
@@ -85,5 +85,39 @@ struct process
     int lasttime;
     int flag;
 };
-
+/**
+ * @brief Function to initialize a process pointer given its data
+ * 
+ * @param id Process id after it gets forked
+ * @param arrivaltime Arrival time that was set by the process generator
+ * @param runningtime The time the process needs to run
+ * @param priority Takes a priority value between 1 and 10, 1 being the highest priority and 10 being the lowest
+ * @param starttime The time the process started running for the first time
+ * @param endtime The time when the process finishes its running time
+ * @param remainingtime The time remaining for the process to finish incase of pre-emption
+ * @param waitingtime A calculated value for the time the process spent waiting in the ready queue
+ * @param responsetime Difference between the time the process started and the time it was first scheduled
+ * @param turnaroundtime Time take for the process to finish from the time it was created
+ * @param isFinished Flag for the process to indicate if it has finished running
+ * @param isRunning Flag for the process to indicate if it is currently running
+ * @param isStarted Flag for the process to indicate if it has started running
+ * @return struct process* returns a pointer to the process created
+ */
+struct process* initializeProcess(int id, int arrivaltime, int runningtime, int priority, int starttime, int endtime, int remainingtime, int waitingtime, int responsetime, int turnaroundtime, int isFinished, int isRunning, int isStarted) {
+    struct process* p = malloc(sizeof(struct process));
+    p->id = id;
+    p->arrivaltime = arrivaltime;
+    p->runningtime = runningtime; // Corrected bursttime assignment
+    p->priority = priority;
+    p->starttime = starttime;
+    p->endtime = endtime;
+    p->remainingtime = remainingtime;
+    p->waittime = waitingtime; // Added assignment for waittime
+    p->responsetime = responsetime;
+    p->turnaroundtime = turnaroundtime;
+    p->flag = isFinished; // Renamed isFinished for consistency
+    p->lasttime = isRunning; // Added assignment for lasttime
+    p->flag = isStarted; // Added assignment for flag
+    return p;
+}
 #endif // HEADERS_H
