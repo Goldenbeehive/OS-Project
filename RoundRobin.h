@@ -1,26 +1,14 @@
+#ifndef ROUNDROBIN_H
+#define ROUNDROBIN_H
+
 #include"headers.h"
 struct CircularQueue
 {
     int front, rear, size, current;
     int capacity;
-    struct process *array;
+    struct process **array;
 };
-struct process
-{
-    int id;
-    int arrivaltime;
-    int runningtime;
-    int priority;
-    int starttime;
-    int endtime;
-    int remainingtime;
-    int waittime;
-    int responsetime;
-    int finishtime;
-    int turnaroundtime;
-    int lasttime;
-    int flag;
-};
+
 
 /**
  * @brief Create a Queue object
@@ -33,7 +21,7 @@ struct CircularQueue *createQueue(int capacity)
     struct CircularQueue *queue = (struct CircularQueue *)malloc(sizeof(struct CircularQueue));
     queue->capacity = capacity;
     queue->front = queue->size = queue->current = queue->rear = 0;
-    queue->array = (struct process *)malloc(queue->capacity * sizeof(struct process));
+    queue->array = (struct process **)malloc(queue->capacity * sizeof(struct process*));
     return queue;
 }
 
@@ -66,12 +54,16 @@ int isEmpty(struct CircularQueue *queue)
  * @param item Returns the removed process if the queue is not empty, NULL otherwise
  * @return -1 if the queue is empty, 0 if the process was removed successfully 
  */
-int dequeue(struct CircularQueue *queue, struct process *item)
+int dequeue(struct CircularQueue *queue, struct process **item)
 {
     if (isEmpty(queue)){
         item=NULL;
         return -1;
     }
+    if(queue->front==queue->current)
+        {
+            queue->current = (queue->current + 1) % queue->capacity;
+        }
     *item = queue->array[queue->front];
     queue->front = (queue->front + 1) % queue->capacity;
     queue->size = queue->size - 1;
@@ -85,10 +77,19 @@ int dequeue(struct CircularQueue *queue, struct process *item)
  * @param item Process being inserted in the queue
  * @return -1 if the queue is full, 0 if the process was inserted successfully 
  */
-int enqueue(struct CircularQueue *queue, struct process item)
+int enqueue(struct CircularQueue *queue, struct process *item)
 {
     if (isFull(queue))
         return -1;
+    if (isEmpty(queue))
+        {
+            queue->front = 0;
+            queue->current = 0;
+            queue->rear = 0;
+            queue->array[queue->rear] = item;
+            queue->size = queue->size + 1;
+            return 0;
+        }
     queue->rear = (queue->rear + 1) % queue->capacity;
     queue->array[queue->rear] = item;
     queue->size = queue->size + 1;
@@ -117,10 +118,63 @@ int changeCurrent(struct CircularQueue *queue){
  * @param queue The queue we want to get the current process from
  * @return struct process 
  */
-struct process getCurrent(struct CircularQueue *queue)
+struct process* getCurrent(struct CircularQueue *queue)
 {
+    if(isEmpty(queue))
+        return NULL;
     return queue->array[queue->current];
 }
+
+/**
+ * @brief Returns the first process in the queue
+ * 
+ * @param queue The queue we want to get the first process from
+ * @return struct process pointer
+ */
+struct process* getFront(struct CircularQueue *queue)
+{
+    if(isEmpty(queue))
+        return NULL;
+    return queue->array[queue->front];
+}
+
+/**
+ * @brief Removes the currently running process from the queue and returns it
+ * 
+ * @param queue Queue which we will remove the process from
+ * @return struct process* The process that was removed, or null if the queue is empty
+ */
+struct process* RemoveCurrent(struct CircularQueue *queue)
+{
+    if(isEmpty(queue))
+        return NULL;
+    struct process* temp = getCurrent(queue);  
+    queue->array[queue->current] = NULL;
+    if(queue->front==queue->rear){
+        queue->size=0;
+        return temp;
+    }
+    if(queue->current==queue->rear)
+        {
+            queue->rear = (queue->rear - 1) % queue->capacity;
+        }
+    else if(queue->current==queue->front)
+        {
+            queue->front = (queue->front + 1) % queue->capacity;
+        }
+    else
+        {
+            for(int i=queue->current;i!=queue->rear;i=(i+1)%queue->capacity)
+                {
+                    queue->array[i]=queue->array[(i+1)%queue->capacity];
+                }
+            queue->rear = (queue->rear - 1) % queue->capacity;
+        }
+    queue->size = queue->size - 1;
+    return temp;
+};
+
+
 
 /**
  * @brief Destroys the queue and frees the memory
@@ -132,3 +186,25 @@ void destroyQueue(struct CircularQueue *queue)
     free(queue->array);
     free(queue);
 }
+
+/**
+ * @brief Prints the queue
+ * 
+ * @param queue The queue we want to print
+ */
+void printQueue(struct CircularQueue *queue)
+{
+    if (isEmpty(queue))
+    {
+        printf("Queue is empty\n");
+        return;
+    }
+    for (int i = queue->front; i <= queue->rear; i++)
+    {
+        if(queue->array[i]==NULL)
+            continue;
+        printf("id: %d, arrivaltime: %d\n", queue->array[i]->id, queue->array[i]->arrivaltime);
+    }
+    printf("\n");
+}
+#endif
