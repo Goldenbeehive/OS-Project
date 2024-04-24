@@ -2,16 +2,27 @@
 #define HPF_H
 #include "minHeap.h"
 #include "headers.h"
-void HighestPriorityFirst(int processCount){
-int clk = getClk(); 
-int remainingProcesses =processCount;
-struct process *currentProcess;
-while(remainingProcesses !=0) {
-    currentProcess = getCurrent();
-    kill(currentProcess->id,SIGCONT);
-    clk = getClk();
-    while(currentProcess->remainingtime > clk-getClk());
-    remainingProcesses--;
+int waitforproc = 1;
+void handle_sigchild(int sig)
+{
+    waitforproc = 0;
 }
+void HighestPriorityFirst(int processCount)
+{
+    signal(SIGCHLD, handle_sigchild);
+    int clk = getClk();
+    int remainingProcesses = processCount;
+    struct process *currentProcess;
+
+    while (remainingProcesses != 0)
+    {
+        currentProcess = getCurrent();
+        kill(currentProcess->id, SIGCONT);
+        clk = getClk();
+        while (waitforproc)
+            ;
+        waitforproc = 1;
+        remainingProcesses--;
+    }
 }
 #endif
