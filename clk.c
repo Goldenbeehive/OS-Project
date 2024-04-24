@@ -4,7 +4,6 @@
  * This file represents an emulated clock for simulation purpose only.
  * It is not a real part of operating system!
  */
-
 #include "headers.h"
 
 int shmid;
