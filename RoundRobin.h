@@ -3,8 +3,16 @@
 #include "headers.h"
 #include "CircularQueue.h"
 int ProcessFinished = 0;
+struct process *currentProcess;
+struct CircularQueue *Running_Queue;
+void MySigHandler(int signum)
+{
+    ProcessFinished = 1;
+}
 void RoundRobin(int quantum, int processCount)
 {
+    signal(SIGUSR1, MySigHandler);
+    int HasArrivedArray[processCount]={0};
     // Attach to the ready queue
     key_t ReadyQueueKey;
     ReadyQueueKey= ftok("Funnyman",'A');
@@ -16,12 +24,11 @@ void RoundRobin(int quantum, int processCount)
     }
     struct process *ArrivedProcess =NULL;
     // Create necessary variables and queues
-    struct CircularQueue *Running_Queue = createQueue(processCount);
+    Running_Queue = createQueue(processCount);
     int clk = getClk();
     int quantumCounter = 0;
     int remainingProcesses = processCount;
     int previousClk;
-    struct process *currentProcess;
     // While there are still processes in the running queue
     while (remainingProcesses != 0)
     {
@@ -47,13 +54,21 @@ void RoundRobin(int quantum, int processCount)
         if (!isEmpty(Running_Queue))
         {
             //Check if the process finished its quantum
-            if (quantumCounter > quantum)
+            if (quantumCounter > quantum || ProcessFinished == 1) 
             {
                 quantumCounter = 0;
                 if (!isEmpty(Running_Queue))
                 {
                     currentProcess = getCurrent(Running_Queue);
+                    if(!ProcessFinished){
                     kill(currentProcess->id, SIGSTOP);
+                    }
+                    else
+                    {
+                        ProcessFinished = 0;
+                        struct process *FinishedProcess = RemoveCurrent(Running_Queue);
+                        FinishedProcess->endtime = getClk();
+                    }
                     changeCurrent(Running_Queue);
                 }
             }
@@ -61,6 +76,11 @@ void RoundRobin(int quantum, int processCount)
             if (currentProcess != NULL)
             {
                 kill(currentProcess->id, SIGCONT);
+                if(HasArrivedArray[currentProcess->id]==0)
+                {
+                    currentProcess->starttime = getClk();
+                    HasArrivedArray[currentProcess->id]=1;
+                }
             }
             quantumCounter++;
         }
