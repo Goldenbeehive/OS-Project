@@ -72,6 +72,7 @@ void destroyClk(bool terminateAll)
 struct process
 {
     int id;
+    pid_t pid;
     int arrivaltime;
     int runningtime;
     int priority;
@@ -106,6 +107,7 @@ struct process
 struct process* initializeProcess(int id, int arrivaltime, int runningtime, int priority, int starttime, int endtime, int remainingtime, int waitingtime, int responsetime, int turnaroundtime, int isFinished, int isRunning, int isStarted) {
     struct process* p = malloc(sizeof(struct process));
     p->id = id;
+    p->pid = getpid();
     p->arrivaltime = arrivaltime;
     p->runningtime = runningtime; // Corrected bursttime assignment
     p->priority = priority;
