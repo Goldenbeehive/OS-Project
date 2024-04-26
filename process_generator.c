@@ -38,8 +38,10 @@ int main(int argc, char * argv[])
     printf("Enter the scheduling algorithm you want: (1 for Round Robin, 2 for xxxx, 3 for xxxx) ");
     scanf("%d", &SchedAlgo);
     if (SchedAlgo == 1){
-        printf("Enter your Round Robin Quantum: ");
-        scanf("%d",&RR_Quantum);
+        while (RR_Quantum <= 0){
+            printf("Enter your Round Robin Quantum: ");
+            scanf("%d",&RR_Quantum);
+        }
     }
     processQueue = (struct process**)malloc(numOfProcesses * sizeof(struct process));
     char line[MAX_SIZE]; 
@@ -51,26 +53,26 @@ int main(int argc, char * argv[])
     }
     fclose(f);
     i = 0;
-    char* SchedParam[4]; // TO BE ADDED
+    char* SchedParam[4];
     switch (SchedAlgo){
         case 1:
-            SchedParam[0] = "RR";
+            SchedParam[0] = "1";
             break;
         case 2:
-            SchedParam[0] = "SRTN";
+            SchedParam[0] = "2";
             break;
         case 3:
-            SchedParam[0] = "HPF";
+            SchedParam[0] = "3";
             break;
         default:
             perror("Invalid Scheduling Algorithm");
-            return 1;
+            return -1;
             break;
     }
-    char numOfProc[5];
+    char numOfProc[10];
     sprintf(numOfProc,"%d",numOfProcesses);
     SchedParam[1] = numOfProc;
-    SchedParam[2] = RR_Quantum == 0 ? "0" : "1";
+    SchedParam[2] = RR_Quantum == 0 ? "0" : sprintf("%d",RR_Quantum);
     SchedParam[3] = NULL;
     pid_t Clock = fork();
     if (Clock == 0){ execv("./clk.o",NULL); }
@@ -85,9 +87,7 @@ int main(int argc, char * argv[])
             i++;
         }
     }
-    int stat_loc;
-    //waitpid(Scheduler,&stat_loc,0);
-    clearResources(0);
+    signal(SIGCHLD,clearResources);
 }
 
 void clearResources(int signum)
