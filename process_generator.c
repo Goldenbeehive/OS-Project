@@ -31,13 +31,7 @@ int main(int argc, char * argv[])
     while (fgets(line, sizeof(line), f) != NULL){
         int ID,AT,RunningTime,PRI;//,MEMSISZE;
         sscanf(line,"%d %d %d %d", &ID,&AT,&RunningTime,&PRI);               //,&MEMSIZE);
-        struct process proc;
-         proc.id = ID;
-         proc.arrivaltime = AT;
-         proc.runningtime = RunningTime;
-         proc.priority = PRI;
-         processQueue[i++] =  proc;
-        //processQueue[i++] = initializeProcess(ID,AT,RunningTime,PRI);    //,MEMSIZE)
+        processQueue[i++] = initializeProcess(ID,AT,RunningTime,PRI);    //,MEMSIZE)
         testerfunction(&processQueue[i-1]);
     }
     fclose(f);
@@ -75,9 +69,7 @@ int main(int argc, char * argv[])
     msgid = msgget(key, 0666 | IPC_CREAT);
     while (i < numOfProcesses){
         if (getClk() == processQueue[i].arrivaltime){
-            struct msg message;
-            message.proc = processQueue[i];
-            msgsnd(msgid, &message, sizeof(message.proc),IPC_NOWAIT);
+            msgsnd(msgid, &processQueue[i], sizeof(struct process),IPC_NOWAIT);
             printf("Process %d sent to scheduler at time = %d\n",processQueue[i].id,processQueue[i].arrivaltime);
             i++;
         }
@@ -94,7 +86,6 @@ int main(int argc, char * argv[])
 void clearResources(int signum)
 {
     //TODO Clears all resources in case of interruption
-    for (int i = 0 ; i < numOfProcesses ; i++){ free(processQueue[i]); }
     free(processQueue);
     msgctl(msgid, IPC_RMID,NULL);
     destroyClk(true);

@@ -102,7 +102,7 @@ struct msg
  * @param memsize The memory that the process needs.
  * @return struct process* returns a pointer to the process created
  */
-struct process* initializeProcess(int id, int arrivaltime, int runningtime, int priority) {
+struct process* initializeProcessptr(int id, int arrivaltime, int runningtime, int priority) {
     struct process* p = malloc(sizeof(struct process));
     p->id = id;
     p->pid = getpid();
@@ -112,7 +112,16 @@ struct process* initializeProcess(int id, int arrivaltime, int runningtime, int 
     p->remainingtime = runningtime;
     return p;
 }
-
+struct process initializeProcess(int id, int arrivaltime, int runningtime, int priority) {
+    struct process p;
+    p.id = id;
+    p.pid = getpid();
+    p.arrivaltime = arrivaltime;
+    p.runningtime = runningtime; // Corrected bursttime assignment
+    p.priority = priority;
+    p.remainingtime = runningtime;
+    return p;
+}
 void testerfunction(struct process* p){
     printf("%d %d %d %d %d",p->id,p->arrivaltime,p->runningtime,p->remainingtime,p->priority);
     printf("\n");

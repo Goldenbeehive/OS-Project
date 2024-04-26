@@ -85,6 +85,7 @@ void RoundRobin(int quantum, int processCount)
                         ProcessFinished = 0;
                         struct process *FinishedProcess = RemoveCurrent(Running_Queue);
                         FinishedProcess->endtime = getClk();
+                        free(FinishedProcess);
                     }
                     changeCurrent(Running_Queue);
                 }
@@ -119,13 +120,13 @@ void RoundRobin(int quantum, int processCount)
 int CheckArrivedProcesses(struct CircularQueue *RunningQueue,struct process *ArrivedProcesses, int ReadyQueueID)
 {
     printf("weslt");
-    struct msg rec ;
+    struct process rec;
 
-    int received = msgrcv(ReadyQueueID, &rec, sizeof(rec.proc), 0, IPC_NOWAIT);
-    ArrivedProcesses = rec.proc;
-    printf("%i %i",received,ArrivedProcesses->arrivaltime);
+    int received = msgrcv(ReadyQueueID, &rec, sizeof(rec), 0, IPC_NOWAIT);
     if(received!=-1)
     {
+        ArrivedProcesses = initializeProcessptr(rec.id,rec.arrivaltime,rec.runningtime,rec.priority);
+        printf(" %i %i",received,ArrivedProcesses->arrivaltime);
         printf("Received Process with ID: %d\n",ArrivedProcesses->id);
         return 1;
     }
