@@ -1,5 +1,4 @@
-#ifndef ROUNDROBIN_H
-#define ROUNDROBIN_H
+
 #include "headers.h"
 #include "CircularQueue.h"
 int ProcessFinished = 0;
@@ -152,15 +151,28 @@ int ForkProcess(int RunningTime)
     }
     return pid;
 }
+
+struct msgbuf {
+    long mtype;
+    char mtext[100];
+};
 int main()
 {
+    initClk();
     key_t ReadyQueueKey;
     ReadyQueueKey= ftok("Funnyman",'A');
     int ReadyQueueID = msgget(ReadyQueueKey, 0666 | IPC_CREAT);
+
+    struct msgbuf message;
+    message.mtype = 1;
+    message.mtext[0] = 'A';
+    //int rec_val = msgsnd(ReadyQueueID, &message, sizeof(message.mtext), !IPC_NOWAIT);
     struct process *Dummy;
     Dummy=initializeProcess(0,0,0,0);
-    msgsnd(ReadyQueueID, Dummy, sizeof(struct process),IPC_NOWAIT);
-    RoundRobin(2, 5);
+    msgsnd(ReadyQueueID, &Dummy, sizeof(Dummy),!IPC_NOWAIT);
+    RoundRobin(2, 1);
+
+    msgctl(ReadyQueueID, IPC_RMID,NULL);
+    destroyClk(true);
     return 0;
 }
-#endif

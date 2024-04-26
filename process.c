@@ -1,20 +1,22 @@
 #include "headers.h"
 int isRunning = 0;
 
-int SIGCONT_Handler(int signum){ isRunning = 1; }
-
-int main(int agrc, char * argv[])
+void SIGCONT_Handler(int signum){ isRunning = 1; }
+void SIGSTSP_Handler(int signum){ isRunning = 0; }
+int main(int argc, char * argv[])
 {
-    if (argc != 2) {
+    printf("Process Started\n");
+    if (argc != 1) {
         perror("Invalid number of arguments");
         return -1;
     }
-    signal(SIGCONT, SIGCONT_Handler);
+    signal(SIGSTOP,&SIGSTSP_Handler);
+    signal(SIGCONT,&SIGCONT_Handler);
     initClk();
-    int remainingtime = atoi(argv[1]), prevClock = getclk() ,currentClock;
+    int remainingTime = atoi(argv[1]), prevClock = getClk() ,currentClock;
     while (remainingTime > 0){
         while (!isRunning);
-        currentClock = getclk();
+        currentClock = getClk();
         if (currentClock > prevClock) {
             prevClock = currentClock;
             remainingTime--;

@@ -1,25 +1,8 @@
 #include "headers.h"
-#define IGNORE_LENGTH 128
-#define MAX_SIZE 1024
+#include "RoundRobin.h"
 int numOfProcesses = 0;
 struct process** processQueue = NULL;
-
-void testerfunction(struct process* p){
-    printf("%d %d %d %d %d",p->id,p->arrivaltime,p->runningtime,p->remainingtime,p->priority);
-    printf("\n");
-}
-
-void skipLine(FILE* f){
-    char ignore[IGNORE_LENGTH];
-    fgets(ignore,IGNORE_LENGTH,f);
-}
-int getnoOfProcesses(FILE* f){
-    int c;
-    int count = 0;
-    while ((c = fgetc(f)) != EOF) { if (c == '\n') { count++; } }
-    fseek(f,0,SEEK_SET);
-    return count;
-}
+int msgid;
 
 void clearResources(int);
 
@@ -72,14 +55,18 @@ int main(int argc, char * argv[])
     char numOfProc[10];
     sprintf(numOfProc,"%d",numOfProcesses);
     SchedParam[1] = numOfProc;
-    SchedParam[2] = RR_Quantum == 0 ? "0" : sprintf("%d",RR_Quantum);
+    char RRQuantum[10];
+    if(RR_Quantum == 0){ SchedParam[2] = "0"; }
+    else{sprintf(RRQuantum,"%d",RR_Quantum); SchedParam[2] = RRQuantum;}
     SchedParam[3] = NULL;
     pid_t Clock = fork();
-    if (Clock == 0){ execv("./clk.o",NULL); }
+    char* args[] = {"./clk.out",NULL};
+    if (Clock == 0){ execv(args[0],args); }
     initClk();
-    pid_t Scheduler = fork();
-    if (Scheduler == 0){ execv("./scheduler.o",SchedParam); }
-    int msgid;
+    //pid_t Scheduler = fork();
+    //if (Scheduler == 0){ execv("./scheduler.out",SchedParam); }
+    key_t key = ftok("Funnyman", 'A');
+    msgid = msgget(key, 0666 | IPC_CREAT);
     while (i < numOfProcesses){
         if (getClk() == processQueue[i]->arrivaltime){
             msgsnd(msgid, processQueue[i], sizeof(struct process),IPC_NOWAIT);
@@ -87,7 +74,13 @@ int main(int argc, char * argv[])
             i++;
         }
     }
+    
     signal(SIGCHLD,clearResources);
+    signal(SIGINT,clearResources);
+    //RoundRobin(RR_Quantum,numOfProcesses);
+    //waitpid(Scheduler,NULL,0);
+    msgctl(msgid, IPC_RMID,NULL);
+    return 0;
 }
 
 void clearResources(int signum)
@@ -95,5 +88,6 @@ void clearResources(int signum)
     //TODO Clears all resources in case of interruption
     for (int i = 0 ; i < numOfProcesses ; i++){ free(processQueue[i]); }
     free(processQueue);
+    msgctl(msgid, IPC_RMID,NULL);
     destroyClk(true);
 }

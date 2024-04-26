@@ -18,6 +18,8 @@ typedef short bool;
 #define true 1
 #define false 0
 
+#define IGNORE_LENGTH 128
+#define MAX_SIZE 1024
 #define SHKEY 300
 
 
@@ -106,4 +108,24 @@ struct process* initializeProcess(int id, int arrivaltime, int runningtime, int 
     p->remainingtime = runningtime;
     return p;
 }
+
+void testerfunction(struct process* p){
+    printf("%d %d %d %d %d",p->id,p->arrivaltime,p->runningtime,p->remainingtime,p->priority);
+    printf("\n");
+}
+
+void skipLine(FILE* f){
+    char ignore[IGNORE_LENGTH];
+    fgets(ignore,IGNORE_LENGTH,f);
+}
+int getnoOfProcesses(FILE* f){
+    int c;
+    int count = 0;
+    while ((c = fgetc(f)) != EOF) { if (c == '\n') { count++; } }
+    fseek(f,0,SEEK_SET);
+    return count;
+}
+
+
+
 #endif // HEADERS_H
