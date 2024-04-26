@@ -56,7 +56,7 @@ void RoundRobin(int quantum, int processCount)
         bool ay7aga = true;
         while(ay7aga)
         {
-            printf("weslt\n");
+            //printf("weslt\n");
             struct process rec;
             int received = msgrcv(ReadyQueueID, &rec, sizeof(rec), 0, IPC_NOWAIT);
             if(received!=-1)
@@ -80,13 +80,29 @@ void RoundRobin(int quantum, int processCount)
             {
                 printf("Adding Process to Running Queue\n");
                 enqueue(Running_Queue, ArrivedProcess);
-                ArrivedProcess->pid= ForkProcess(ArrivedProcess->runningtime);
+                
+                printf("Forking Process\n");
+                int pid = fork();
+                if (pid == -1)
+                {
+                    perror("Error in forking the process");
+                }
+                if (pid == 0)
+                {
+                    printf("Process Forked\n");
+                    char RunningTimeStr[12];
+                    sprintf(RunningTimeStr, "%d", currentProcess->runningtime);
+                    char *args[] = {"./process.out", RunningTimeStr, NULL};
+                    execv(args[0], args);
+                }
+                printf("Process Forked with PID: %d\n",pid);
+
                 kill(ArrivedProcess->pid, SIGSTOP);
                 ArrivedProcess = NULL;
             }
             else
             {
-                printf("ay 7aga tnya\n");
+                printf("No new processes\n");
             }
         }      
         // If we have processes in running queue, We process them 
@@ -106,6 +122,7 @@ void RoundRobin(int quantum, int processCount)
                     else
                     {
                         ProcessFinished = 0;
+                        printf("Process with ID: %d has finished\n",currentProcess->id);
                         struct process *FinishedProcess = RemoveCurrent(Running_Queue);
                         FinishedProcess->endtime = getClk();
                         remainingProcesses--;
@@ -154,6 +171,7 @@ int CheckArrivedProcesses(struct CircularQueue *RunningQueue,struct process *Arr
  */
 int ForkProcess(int RunningTime)
 {
+    printf("Forking Process\n");
     int pid = fork();
     if (pid == -1)
     {
@@ -161,11 +179,13 @@ int ForkProcess(int RunningTime)
     }
     if (pid == 0)
     {
+        printf("Process Forked\n");
         char RunningTimeStr[12];
         sprintf(RunningTimeStr, "%d", RunningTime);
         char *args[] = {"./process.out", RunningTimeStr, NULL};
         execv(args[0], args);
     }
+    printf("Process Forked with PID: %d\n",pid);
     return pid;
 }
 #endif

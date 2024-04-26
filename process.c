@@ -6,7 +6,8 @@ void SIGSTSP_Handler(int signum){ isRunning = 0; }
 int main(int argc, char * argv[])
 {
     printf("Process Started\n");
-    if (argc != 1) {
+    if (argc != 2) {
+        printf("%i",argc);
         perror("Invalid number of arguments");
         return -1;
     }

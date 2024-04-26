@@ -79,7 +79,14 @@ void RoundRobin(int quantum, int processCount)
             {
                 printf("Adding Process to Running Queue\n");
                 enqueue(Running_Queue, ArrivedProcess);
-                ArrivedProcess->pid= ForkProcess(ArrivedProcess->runningtime);
+                printf("Forking Process\n");
+                //printf("Process Forked\n");
+                pid_t pid = fork();
+                char* RunningTimeStr;
+                sprintf(RunningTimeStr, "%d", currentProcess->runningtime);
+                char* args[] = {"./process.out",RunningTimeStr,NULL};
+                if (pid == 0){ execv(args[0],args); }
+                printf("Process Forked with PID: %d\n",pid);
                 kill(ArrivedProcess->pid, SIGSTOP);
                 ArrivedProcess = NULL;
             }
