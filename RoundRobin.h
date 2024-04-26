@@ -52,9 +52,35 @@ void RoundRobin(int quantum, int processCount)
         printf("Current Clk: %d\n",clk);
         // Check if there are any new processes
         ArrivedProcess = NULL;
-        while(CheckArrivedProcesses(Running_Queue,ArrivedProcess,ReadyQueueID))
+        bool ay7aga = true;
+        while(ay7aga)
         {
-            if (!isFull(Running_Queue))
+            printf("weslt");
+            struct process rec;
+            
+            int received = msgrcv(ReadyQueueID, &rec, sizeof(rec), 0, IPC_NOWAIT);
+            if(received!=-1)
+            {
+                ArrivedProcess = malloc(sizeof(struct process));
+                ArrivedProcess->id = rec.id;
+                ArrivedProcess->pid = getpid();
+                ArrivedProcess->arrivaltime = rec.arrivaltime;
+                ArrivedProcess->runningtime = rec.runningtime; // Corrected bursttime assignment
+                ArrivedProcess->priority = rec.priority;
+                ArrivedProcess->remainingtime = rec.runningtime;
+                // struct process tmp;
+                //initializeProcessptr(rec.id,rec.arrivaltime,rec.runningtime,rec.priority,&tmp);
+                // ArrivedProcess = &tmp;
+                // printf(" %i %i",received,ArrivedProcess->arrivaltime);
+                printf("Received Process with ID: %d\n",ArrivedProcess->id);
+                ay7aga = true;
+            }
+            else
+            {
+                printf("No Process Received\n");
+                ay7aga = false;
+            }
+            if (!isFull(Running_Queue) && ay7aga)
             {
                 enqueue(Running_Queue, ArrivedProcess);
                 remainingProcesses--;
@@ -64,7 +90,7 @@ void RoundRobin(int quantum, int processCount)
             }
             else
             {
-                printf("Queue is full\n");
+                printf("ay 7aga tnya\n");
             }
         }      
         // If we have processes in running queue, We process them 
@@ -119,22 +145,7 @@ void RoundRobin(int quantum, int processCount)
  */
 int CheckArrivedProcesses(struct CircularQueue *RunningQueue,struct process *ArrivedProcesses, int ReadyQueueID)
 {
-    printf("weslt");
-    struct process rec;
-
-    int received = msgrcv(ReadyQueueID, &rec, sizeof(rec), 0, IPC_NOWAIT);
-    if(received!=-1)
-    {
-        ArrivedProcesses = initializeProcessptr(rec.id,rec.arrivaltime,rec.runningtime,rec.priority);
-        printf(" %i %i",received,ArrivedProcesses->arrivaltime);
-        printf("Received Process with ID: %d\n",ArrivedProcesses->id);
-        return 1;
-    }
-    else
-    {
-        printf("No Process Received\n");
-        return 0;
-    }
+    //set kaza b kaza;
 }
 /**
  * @brief Creates a new process and forks it
