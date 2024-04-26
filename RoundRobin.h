@@ -55,9 +55,8 @@ void RoundRobin(int quantum, int processCount)
         bool ay7aga = true;
         while(ay7aga)
         {
-            printf("weslt");
+            printf("weslt\n");
             struct process rec;
-            
             int received = msgrcv(ReadyQueueID, &rec, sizeof(rec), 0, IPC_NOWAIT);
             if(received!=-1)
             {
@@ -68,10 +67,6 @@ void RoundRobin(int quantum, int processCount)
                 ArrivedProcess->runningtime = rec.runningtime; // Corrected bursttime assignment
                 ArrivedProcess->priority = rec.priority;
                 ArrivedProcess->remainingtime = rec.runningtime;
-                // struct process tmp;
-                //initializeProcessptr(rec.id,rec.arrivaltime,rec.runningtime,rec.priority,&tmp);
-                // ArrivedProcess = &tmp;
-                // printf(" %i %i",received,ArrivedProcess->arrivaltime);
                 printf("Received Process with ID: %d\n",ArrivedProcess->id);
                 ay7aga = true;
             }
@@ -82,11 +77,12 @@ void RoundRobin(int quantum, int processCount)
             }
             if (!isFull(Running_Queue) && ay7aga)
             {
+                printf("Adding Process to Running Queue\n");
                 enqueue(Running_Queue, ArrivedProcess);
                 remainingProcesses--;
-                ArrivedProcess = NULL;
                 ArrivedProcess->pid= ForkProcess(ArrivedProcess->runningtime);
                 kill(ArrivedProcess->pid, SIGSTOP);
+                ArrivedProcess = NULL;
             }
             else
             {
