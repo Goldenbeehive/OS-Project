@@ -1,4 +1,6 @@
 
+#ifndef ROUNDROBIN_H
+#define ROUNDROBIN_H
 #include "headers.h"
 #include "CircularQueue.h"
 int ProcessFinished = 0;
@@ -51,19 +53,40 @@ void RoundRobin(int quantum, int processCount)
         printf("Current Clk: %d\n",clk);
         // Check if there are any new processes
         ArrivedProcess = NULL;
-        while(CheckArrivedProcesses(Running_Queue,ArrivedProcess,ReadyQueueID))
+        bool ay7aga = true;
+        while(ay7aga)
         {
-            if (!isFull(Running_Queue))
+            printf("weslt\n");
+            struct process rec;
+            int received = msgrcv(ReadyQueueID, &rec, sizeof(rec), 0, IPC_NOWAIT);
+            if(received!=-1)
             {
-                enqueue(Running_Queue, ArrivedProcess);
-                remainingProcesses--;
-                ArrivedProcess = NULL;
-                ArrivedProcess->pid= ForkProcess(ArrivedProcess->runningtime);
-                kill(ArrivedProcess->pid, SIGSTOP);
+                ArrivedProcess = malloc(sizeof(struct process));
+                ArrivedProcess->id = rec.id;
+                ArrivedProcess->pid = getpid();
+                ArrivedProcess->arrivaltime = rec.arrivaltime;
+                ArrivedProcess->runningtime = rec.runningtime; // Corrected bursttime assignment
+                ArrivedProcess->priority = rec.priority;
+                ArrivedProcess->remainingtime = rec.runningtime;
+                printf("Received Process with ID: %d\n",ArrivedProcess->id);
+                ay7aga = true;
             }
             else
             {
-                printf("Queue is full\n");
+                printf("No Process Received\n");
+                ay7aga = false;
+            }
+            if (!isFull(Running_Queue) && ay7aga)
+            {
+                printf("Adding Process to Running Queue\n");
+                enqueue(Running_Queue, ArrivedProcess);
+                ArrivedProcess->pid= ForkProcess(ArrivedProcess->runningtime);
+                kill(ArrivedProcess->pid, SIGSTOP);
+                ArrivedProcess = NULL;
+            }
+            else
+            {
+                printf("ay 7aga tnya\n");
             }
         }      
         // If we have processes in running queue, We process them 
@@ -72,6 +95,7 @@ void RoundRobin(int quantum, int processCount)
             //Check if the process finished its quantum
             if (quantumCounter > quantum || ProcessFinished == 1) 
             {
+                printf("Quantum Finished\n");
                 quantumCounter = 0;
                 if (!isEmpty(Running_Queue))
                 {
@@ -84,6 +108,8 @@ void RoundRobin(int quantum, int processCount)
                         ProcessFinished = 0;
                         struct process *FinishedProcess = RemoveCurrent(Running_Queue);
                         FinishedProcess->endtime = getClk();
+                        remainingProcesses--;
+                        free(FinishedProcess);
                     }
                     changeCurrent(Running_Queue);
                 }
@@ -92,6 +118,7 @@ void RoundRobin(int quantum, int processCount)
             if (currentProcess != NULL)
             {
                 kill(currentProcess->id, SIGCONT);
+                printf("Process with ID: %d is running\n", currentProcess->id);
                 if(HasArrivedArray[currentProcess->id]==0)
                 {
                     currentProcess->starttime = getClk();
@@ -117,17 +144,7 @@ void RoundRobin(int quantum, int processCount)
  */
 int CheckArrivedProcesses(struct CircularQueue *RunningQueue,struct process *ArrivedProcesses, int ReadyQueueID)
 {
-    int received = msgrcv(ReadyQueueID, &ArrivedProcesses, sizeof(ArrivedProcesses), 0, IPC_NOWAIT);
-    if(received!=-1)
-    {
-        printf("Received Process with ID: %d\n",ArrivedProcesses->id);
-        return 1;
-    }
-    else
-    {
-        printf("No Process Received\n");
-        return 0;
-    }
+    //set kaza b kaza;
 }
 /**
  * @brief Creates a new process and forks it
@@ -151,11 +168,7 @@ int ForkProcess(int RunningTime)
     }
     return pid;
 }
-
-struct msgbuf {
-    long mtype;
-    char mtext[100];
-}; 
+#endif
 int main()
 {
     initClk();
@@ -163,16 +176,11 @@ int main()
     key_t ReadyQueueKey;
     ReadyQueueKey= ftok("Funnyman",'A');
     int ReadyQueueID = msgget(ReadyQueueKey, 0666 | IPC_CREAT);
-
-    struct msgbuf message;
-    message.mtype = 1;
-    message.mtext[0] = 'A';
-    //int rec_val = msgsnd(ReadyQueueID, &message, sizeof(message.mtext), !IPC_NOWAIT);
-    struct process *Dummy;
-    Dummy=initializeProcess(0,0,0,0);
-    msgsnd(ReadyQueueID, &Dummy, sizeof(Dummy),!IPC_NOWAIT);
-    RoundRobin(2, 1);
-
+    struct process dummy=initializeProcess(1,0,5,1);
+    struct process dummy2=initializeProcess(2,0,5,1);
+    msgsnd(ReadyQueueID, &dummy, sizeof(struct process),IPC_NOWAIT);
+    msgsnd(ReadyQueueID, &dummy2, sizeof(struct process),IPC_NOWAIT);
+    RoundRobin(2,2);
     msgctl(ReadyQueueID, IPC_RMID,NULL);
     destroyClk(true);
     return 0;

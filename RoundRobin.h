@@ -21,7 +21,7 @@ void MySigHandler(int signum)
 void RoundRobin(int quantum, int processCount)
 {
     printf("Round Robin Scheduler\n");
-    signal(SIGUSR1, MySigHandler);
+    signal(SIGCHLD, MySigHandler);
     int HasArrivedArray[processCount];
     for(int i=0;i<processCount;i++)
     {
@@ -79,7 +79,6 @@ void RoundRobin(int quantum, int processCount)
             {
                 printf("Adding Process to Running Queue\n");
                 enqueue(Running_Queue, ArrivedProcess);
-                remainingProcesses--;
                 ArrivedProcess->pid= ForkProcess(ArrivedProcess->runningtime);
                 kill(ArrivedProcess->pid, SIGSTOP);
                 ArrivedProcess = NULL;
@@ -95,6 +94,7 @@ void RoundRobin(int quantum, int processCount)
             //Check if the process finished its quantum
             if (quantumCounter > quantum || ProcessFinished == 1) 
             {
+                printf("Quantum Finished\n");
                 quantumCounter = 0;
                 if (!isEmpty(Running_Queue))
                 {
@@ -105,8 +105,10 @@ void RoundRobin(int quantum, int processCount)
                     else
                     {
                         ProcessFinished = 0;
+                        printf("Process with ID: %d has finished\n",currentProcess->id);
                         struct process *FinishedProcess = RemoveCurrent(Running_Queue);
                         FinishedProcess->endtime = getClk();
+                        remainingProcesses--;
                         free(FinishedProcess);
                     }
                     changeCurrent(Running_Queue);
@@ -116,6 +118,7 @@ void RoundRobin(int quantum, int processCount)
             if (currentProcess != NULL)
             {
                 kill(currentProcess->id, SIGCONT);
+                printf("Process with ID: %d is running\n", currentProcess->id);
                 if(HasArrivedArray[currentProcess->id]==0)
                 {
                     currentProcess->starttime = getClk();
@@ -165,5 +168,4 @@ int ForkProcess(int RunningTime)
     }
     return pid;
 }
- 
 #endif

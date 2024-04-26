@@ -16,11 +16,10 @@ int main(int argc, char * argv[])
     int remainingTime = atoi(argv[1]), prevClock = getClk() ,currentClock;
     while (remainingTime > 0){
         while (!isRunning);
+        printf("Process is running, current clk = %d\n", currentClock);
         currentClock = getClk();
-        if (currentClock > prevClock) {
-            prevClock = currentClock;
-            remainingTime--;
-        }
+        remainingTime--;
+        while(currentClock == getClk());
     }
     destroyClk(false);
     return 0;
