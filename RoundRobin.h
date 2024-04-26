@@ -22,7 +22,7 @@ void RoundRobin(int quantum, int processCount)
 {
     printf("Round Robin Scheduler\n");
     signal(SIGUSR1, MySigHandler);
-    int HasArrivedArray[processCount];
+    int HasArrivedArray[processCount+1];
     for(int i=0;i<processCount;i++)
     {
         HasArrivedArray[i]=0;
@@ -82,18 +82,25 @@ void RoundRobin(int quantum, int processCount)
                 printf("Forking Process\n");
                 //printf("Process Forked\n");
                 pid_t pid = fork();
-                char* RunningTimeStr;
-                sprintf(RunningTimeStr, "%d", currentProcess->runningtime);
-                char* args[] = {"./process.out",RunningTimeStr,NULL};
-                if (pid == 0){ execv(args[0],args); }
+                if (pid == -1)
+                {
+                    perror("Error in forking the process");
+                }
+                if (pid == 0){ 
+                    char* RunningTimeStr;
+                    sprintf(RunningTimeStr, "%d", currentProcess->runningtime);
+                    printf("Im child, my time is %s\n",RunningTimeStr);
+                    char* args[] = {"./process.out",RunningTimeStr,NULL};
+                    execv(args[0],args); 
+                }
                 printf("Process Forked with PID: %d\n",pid);
                 kill(ArrivedProcess->pid, SIGSTOP);
-                ArrivedProcess = NULL;
             }
             else
             {
                 printf("No new processes\n");
             }
+                ArrivedProcess = NULL;
         }      
         // If we have processes in running queue, We process them 
         if (!isEmpty(Running_Queue))
@@ -107,7 +114,7 @@ void RoundRobin(int quantum, int processCount)
                 {
                     currentProcess = getCurrent(Running_Queue);
                     if(!ProcessFinished){
-                    kill(currentProcess->id, SIGSTOP);
+                    kill(currentProcess->pid, SIGSTOP);
                     }
                     else
                     {
@@ -122,9 +129,10 @@ void RoundRobin(int quantum, int processCount)
                 }
             }
             currentProcess = getCurrent(Running_Queue);
+            printf("Current Process ID: %d\n",currentProcess->id);
             if (currentProcess != NULL)
             {
-                kill(currentProcess->id, SIGCONT);
+                kill(currentProcess->pid, SIGCONT);
                 printf("Process with ID: %d is running\n", currentProcess->id);
                 if(HasArrivedArray[currentProcess->id]==0)
                 {
@@ -136,7 +144,7 @@ void RoundRobin(int quantum, int processCount)
         }
         while (getClk() == clk)
         {
-            // Do nothing
+           // printf("Waiting for a tick\n");
         }
     }
 }
