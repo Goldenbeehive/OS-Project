@@ -117,7 +117,7 @@ void RoundRobin(int quantum, int processCount)
  */
 int CheckArrivedProcesses(struct CircularQueue *RunningQueue,struct process *ArrivedProcesses, int ReadyQueueID)
 {
-    int received = msgrcv(ReadyQueueID, ArrivedProcesses, sizeof(struct process), 0, IPC_NOWAIT);
+    int received = msgrcv(ReadyQueueID, &ArrivedProcesses, sizeof(ArrivedProcesses), 0, IPC_NOWAIT);
     if(received!=-1)
     {
         printf("Received Process with ID: %d\n",ArrivedProcesses->id);
@@ -159,6 +159,7 @@ struct msgbuf {
 int main()
 {
     initClk();
+    
     key_t ReadyQueueKey;
     ReadyQueueKey= ftok("Funnyman",'A');
     int ReadyQueueID = msgget(ReadyQueueKey, 0666 | IPC_CREAT);
