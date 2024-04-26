@@ -155,7 +155,7 @@ int ForkProcess(int RunningTime)
 struct msgbuf {
     long mtype;
     char mtext[100];
-};
+}; 
 int main()
 {
     initClk();
