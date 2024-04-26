@@ -21,6 +21,7 @@ int main(int argc, char * argv[])
         remainingTime--;
         while(currentClock == getClk());
     }
+    kill(getppid(),SIGUSR1);
     destroyClk(false);
     return 0;
 }

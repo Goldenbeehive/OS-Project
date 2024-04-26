@@ -212,3 +212,27 @@ void printQueue(struct CircularQueue *queue)
     printf("\n");
 }
 #endif
+ 
+int main(){
+
+    struct CircularQueue *queue = createQueue(4);
+    struct process p1 = {1, 1, 1, 1, 1, 1, 1};
+    struct process p2 = {2, 2, 2, 2, 2, 2, 2};
+    struct process p3 = {3, 3, 3, 3, 3, 3, 3};
+    struct process p4 = {4, 4, 4, 4, 4, 4, 4};
+    enqueue(queue, &p1);
+    enqueue(queue, &p2);
+    enqueue(queue, &p3);
+    enqueue(queue, &p4);
+    printQueue(queue);
+    printf("Current Process ID: %d\n",getCurrent(queue)->id);
+    RemoveCurrent(queue);   
+    printf("Current Process ID: %d\n",getCurrent(queue)->id);
+    printQueue(queue);
+    changeCurrent(queue);
+    printf("Current Process ID: %d\n",getCurrent(queue)->id);
+    RemoveCurrent(queue);
+    printQueue(queue);
+    destroyQueue(queue);
+    return 0;
+}
