@@ -1,7 +1,7 @@
 #include "headers.h"
 #include "RoundRobin.h"
 int numOfProcesses = 0;
-struct process** processQueue = NULL;
+struct process* processQueue = NULL;
 int msgid;
 
 void clearResources(int);
@@ -26,13 +26,19 @@ int main(int argc, char * argv[])
             scanf("%d",&RR_Quantum);
         }
     }
-    processQueue = (struct process**)malloc(numOfProcesses * sizeof(struct process));
+    processQueue = (struct process*)malloc(numOfProcesses * sizeof(struct process));
     char line[MAX_SIZE]; 
     while (fgets(line, sizeof(line), f) != NULL){
         int ID,AT,RunningTime,PRI;//,MEMSISZE;
         sscanf(line,"%d %d %d %d", &ID,&AT,&RunningTime,&PRI);               //,&MEMSIZE);
-        processQueue[i++] = initializeProcess(ID,AT,RunningTime,PRI);    //,MEMSIZE)
-        testerfunction(processQueue[i-1]);
+        struct process proc;
+         proc.id = ID;
+         proc.arrivaltime = AT;
+         proc.runningtime = RunningTime;
+         proc.priority = PRI;
+         processQueue[i++] =  proc;
+        //processQueue[i++] = initializeProcess(ID,AT,RunningTime,PRI);    //,MEMSIZE)
+        testerfunction(&processQueue[i-1]);
     }
     fclose(f);
     i = 0;
@@ -63,23 +69,25 @@ int main(int argc, char * argv[])
     char* args[] = {"./clk.out",NULL};
     if (Clock == 0){ execv(args[0],args); }
     initClk();
-    //pid_t Scheduler = fork();
-    //if (Scheduler == 0){ execv("./scheduler.out",SchedParam); }
+    pid_t Scheduler = fork();
+    if (Scheduler == 0){ execv("./scheduler.out",SchedParam); }
     key_t key = ftok("Funnyman", 'A');
     msgid = msgget(key, 0666 | IPC_CREAT);
     while (i < numOfProcesses){
-        if (getClk() == processQueue[i]->arrivaltime){
-            msgsnd(msgid, processQueue[i], sizeof(struct process),IPC_NOWAIT);
-            printf("Process %d sent to scheduler at time = %d\n",processQueue[i]->id,processQueue[i]->arrivaltime);
+        if (getClk() == processQueue[i].arrivaltime){
+            struct msg message;
+            message.proc = processQueue[i];
+            msgsnd(msgid, &message, sizeof(message.proc),IPC_NOWAIT);
+            printf("Process %d sent to scheduler at time = %d\n",processQueue[i].id,processQueue[i].arrivaltime);
             i++;
         }
     }
     
     signal(SIGCHLD,clearResources);
     signal(SIGINT,clearResources);
-    //RoundRobin(RR_Quantum,numOfProcesses);
-    //waitpid(Scheduler,NULL,0);
+    waitpid(Scheduler,NULL,0);
     msgctl(msgid, IPC_RMID,NULL);
+    destroyClk(true);
     return 0;
 }
 

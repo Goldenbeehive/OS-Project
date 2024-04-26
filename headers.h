@@ -88,6 +88,10 @@ struct process
     int lasttime;
     int flag;
 };
+struct msg
+{
+    struct process * proc; 
+};
 /**
  * @brief Function to initialize a process pointer given its data
  * 

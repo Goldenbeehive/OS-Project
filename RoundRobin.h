@@ -118,7 +118,12 @@ void RoundRobin(int quantum, int processCount)
  */
 int CheckArrivedProcesses(struct CircularQueue *RunningQueue,struct process *ArrivedProcesses, int ReadyQueueID)
 {
-    int received = msgrcv(ReadyQueueID, &ArrivedProcesses, sizeof(ArrivedProcesses), 0, IPC_NOWAIT);
+    printf("weslt");
+    struct msg rec ;
+
+    int received = msgrcv(ReadyQueueID, &rec, sizeof(rec.proc), 0, IPC_NOWAIT);
+    ArrivedProcesses = rec.proc;
+    printf("%i %i",received,ArrivedProcesses->arrivaltime);
     if(received!=-1)
     {
         printf("Received Process with ID: %d\n",ArrivedProcesses->id);
@@ -152,15 +157,5 @@ int ForkProcess(int RunningTime)
     }
     return pid;
 }
-int main()
-{
-    key_t ReadyQueueKey;
-    ReadyQueueKey= ftok("Funnyman",'A');
-    int ReadyQueueID = msgget(ReadyQueueKey, 0666 | IPC_CREAT);
-    struct process *Dummy;
-    Dummy=initializeProcess(0,0,0,0);
-    msgsnd(ReadyQueueID, Dummy, sizeof(struct process),IPC_NOWAIT);
-    RoundRobin(2, 5);
-    return 0;
-}
+ 
 #endif

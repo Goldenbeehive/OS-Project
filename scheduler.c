@@ -27,7 +27,6 @@ int main(int argc, char * argv[])
     printf("Selected Algorithm: %d\n", SelectedAlgorithm);
     if (SelectedAlgorithm == 1)
     {
-
         RoundRobin(quantum, processCount);
     }
     else if (SelectedAlgorithm == 2)
