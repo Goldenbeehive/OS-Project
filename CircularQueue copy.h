@@ -1,7 +1,6 @@
 #ifndef CIRCULARQUEUE_H
 #define CIRCULARQUEUE_H 
 #include "headers.h"
-
 struct CircularQueue
 {
     int front, rear, size, current;
@@ -20,7 +19,7 @@ struct CircularQueue *createQueue(int capacity)
     struct CircularQueue *queue = (struct CircularQueue *)malloc(sizeof(struct CircularQueue));
     queue->capacity = capacity;
     queue->front = queue->size = queue->current = queue->rear = 0;
-    queue->array = (struct process *)malloc(queue->capacity * sizeof(struct process));
+    queue->array = (struct process *)malloc(queue->capacity * sizeof(struct process *));
     return queue;
 }
 
@@ -53,10 +52,11 @@ int isEmpty(struct CircularQueue *queue)
  * @param item Returns the removed process if the queue is not empty, NULL otherwise
  * @return -1 if the queue is empty, 0 if the process was removed successfully
  */
-int dequeue(struct CircularQueue *queue, struct process *item)
+int dequeue(struct CircularQueue *queue, struct process **item)
 {
     if (isEmpty(queue))
     {
+        item = NULL;
         return -1;
     }
     if (queue->front == queue->current)
@@ -76,7 +76,7 @@ int dequeue(struct CircularQueue *queue, struct process *item)
  * @param item Process being inserted in the queue
  * @return -1 if the queue is full, 0 if the process was inserted successfully
  */
-int enqueue(struct CircularQueue *queue, struct process item)
+int enqueue(struct CircularQueue *queue, struct process *item)
 {
     if (isFull(queue))
         return -1;
@@ -117,39 +117,46 @@ int changeCurrent(struct CircularQueue *queue)
 }
 
 /**
- * @brief Gets the current process in the queue
+ * @brief Returns the currently running process
  *
  * @param queue The queue we want to get the current process from
- * @param item The process that will be filled with the current process
- * @return int 1 if the queue is not empty, 0 otherwise
+ * @return struct process
  */
-int getCurrent(struct CircularQueue *queue,struct process *item)
+struct process *getCurrent(struct CircularQueue *queue)
 {
     if (isEmpty(queue))
-        return false; // Assuming NULL_PROCESS is defined for struct process
-    *item = queue->array[queue->current];
-    return true;
+        return NULL;
+    return queue->array[queue->current];
 }
 
-
-/** 
- * @brief Removes the current process from the queue
- * 
- * @param queue The queue we want to remove the process from
- * @param item The process that will be filled with the removed process
- * @return int 1 if the process was removed, 0 if the queue is empty
-*/
-int RemoveCurrent(struct CircularQueue *queue,struct process* item)
+/**
+ * @brief Returns the first process in the queue
+ *
+ * @param queue The queue we want to get the first process from
+ * @return struct process pointer
+ */
+struct process *getFront(struct CircularQueue *queue)
 {
     if (isEmpty(queue))
-        return false;
-    struct process temp; 
-    getCurrent(queue,&temp);
+        return NULL;
+    return queue->array[queue->front];
+}
+
+/**
+ * @brief Removes the currently running process from the queue and returns it
+ *
+ * @param queue Queue which we will remove the process from
+ * @return struct process* The process that was removed, or null if the queue is empty
+ */
+struct process *RemoveCurrent(struct CircularQueue *queue)
+{
+    if (isEmpty(queue))
+        return NULL;
+    struct process *temp = getCurrent(queue);
     if (queue->front == queue->rear)
     {
         queue->size = 0;
-        *item = temp;
-        return true;
+        return temp;
     }
     if (queue->current == queue->rear)
     {
@@ -169,9 +176,8 @@ int RemoveCurrent(struct CircularQueue *queue,struct process* item)
     }
     queue->size = queue->size - 1;
     changeCurrent(queue);
-    *item = temp;
-    return true;
-}
+    return temp;
+};
 
 /**
  * @brief Destroys the queue and frees the memory
@@ -198,7 +204,9 @@ void printQueue(struct CircularQueue *queue)
     }
     for (int i = queue->front; i <= queue->rear; i++)
     {
-        printf("id: %d, arrivaltime: %d\n", queue->array[i].id, queue->array[i].arrivaltime);
+        if (queue->array[i] == NULL)
+            continue;
+        printf("id: %d, arrivaltime: %d\n", queue->array[i]->id, queue->array[i]->arrivaltime);
     }
     printf("\n");
 }

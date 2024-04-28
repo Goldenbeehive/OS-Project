@@ -67,6 +67,7 @@ int main(int argc, char * argv[])
     if (Scheduler == 0){ execv("./scheduler.out",SchedParam); }
     key_t key = ftok("Funnyman", 'A');
     msgid = msgget(key, 0666 | IPC_CREAT);
+    printf("Number of processes = %d\n",numOfProcesses);
     while (i < numOfProcesses){
         if (getClk() == processQueue[i].arrivaltime){
             msgsnd(msgid, &processQueue[i], sizeof(struct process),IPC_NOWAIT);
@@ -77,7 +78,7 @@ int main(int argc, char * argv[])
     
     signal(SIGCHLD,clearResources);
     signal(SIGINT,clearResources);
-    waitpid(Scheduler,NULL,0);
+    waitpid(Clock,NULL,0);
     msgctl(msgid, IPC_RMID,NULL);
     destroyClk(true);
     return 0;
