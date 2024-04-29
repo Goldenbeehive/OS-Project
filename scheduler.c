@@ -1,5 +1,6 @@
 #include "headers.h"
 #include "RoundRobin.h"
+#include "SRTN.h"
 
 int main(int argc, char *argv[])
 {
@@ -30,7 +31,7 @@ int main(int argc, char *argv[])
     }
     else if (SelectedAlgorithm == 2)
     {
-        // TODO implement the other algorithms here
+        SRTN(processCount);
     }
     else if (SelectedAlgorithm == 3)
     {
@@ -44,4 +45,5 @@ int main(int argc, char *argv[])
     // upon termination release the clock resources.
     printf("SCHEDULER DONE\n");
     destroyClk(true);
+    kill(getppid(), SIGUSR1);
 }

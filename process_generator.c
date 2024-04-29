@@ -8,7 +8,7 @@ void clearResources(int);
 
 int main(int argc, char * argv[])
 {
-    signal(SIGINT, clearResources);
+    signal(SIGUSR1,&clearResources);
     FILE* f = fopen("processes.txt","r");
     if (f == NULL){
         perror("Error opening file");
@@ -98,11 +98,10 @@ int main(int argc, char * argv[])
         }
     }
     
-    signal(SIGCHLD,clearResources);
-    signal(SIGINT,clearResources);
-    waitpid(Clock,NULL,0);
-    msgctl(msgid, IPC_RMID,NULL);
-    destroyClk(true);
+    //signal(SIGINT,clearResources);
+    waitpid(Scheduler,NULL,0);
+    //msgctl(msgid, IPC_RMID,NULL);
+    //destroyClk(true);
     return 0;
 }
 

@@ -46,7 +46,6 @@ int main(int argc, char * argv[])
         int sent=msgsnd(ReceiveQueueID,&rem,sizeof(rem.msg),!IPC_NOWAIT);
         while(currentClock == getClk()){};
     }
-    printf("Process Finished\n");
     destroyClk(false);
     return 0;
 }

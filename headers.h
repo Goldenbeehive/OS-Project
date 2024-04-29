@@ -120,7 +120,6 @@ void initializeProcessptr(int id, int arrivaltime, int runningtime, int priority
 struct process initializeProcess(int id, int arrivaltime, int runningtime, int priority) {
     struct process p;
     p.id = id;
-    p.pid = getpid();
     p.arrivaltime = arrivaltime;
     p.runningtime = runningtime; // Corrected bursttime assignment
     p.priority = priority;

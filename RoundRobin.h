@@ -137,5 +137,6 @@ void RoundRobin(int quantum, int processCount)
         //Waits till the next clock cycle
         while(clk == getClk()){};
     }
+    destroyList(Running_List);
 }
 #endif
