@@ -16,27 +16,29 @@ void insertKey(process* k , struct minHeap * minHeap,int selector);
  * @return struct minHeap* pointer to the created minHeap 
  */
 struct minHeap* createMinHeap(int capacity){ 
-    if(capacity = 0){
+    if(capacity == 0){
         printf("createMainHeap FAILED\n not valid capacity \n");
         exit(1);
     }
     struct minHeap *minHeap = (struct minHeap *)malloc(sizeof(struct minHeap));
     minHeap->capacity = capacity;
     minHeap->heap_size = 0;
-    minHeap->harr = (struct process **)malloc(sizeof(struct process*));
+    minHeap->harr = (struct process **)malloc(capacity * sizeof(struct process*));
+    return minHeap;
 }
 struct minHeap * createMinHeap(int capacity , struct process ** harrG,int harrGSize,int selector){
-    if(capacity = 0){
+    if(capacity == 0){
         printf("createMainHeap FAILED\n not valid capacity \n");
         exit(1);
     }
     struct minHeap *minHeap = (struct minHeap *)malloc(sizeof(struct minHeap));
     minHeap->capacity = capacity;
     minHeap->heap_size = 0;
-    minHeap->harr = (struct process **)malloc(sizeof(struct process*));
+    minHeap->harr = (struct process **)malloc(capacity * sizeof(struct process*));
     for(int i = 0; i < harrGSize; i++){
         insertKey(harrG[i],minHeap,selector);
     }
+    return minHeap;
 }
 /**
  * @brief Utility Function to Swap 2 processes 
@@ -45,8 +47,7 @@ struct minHeap * createMinHeap(int capacity , struct process ** harrG,int harrGS
  * @param y Second process
  */
 void swap(process* x,process* y){
-    process* temp = (process*)malloc(sizeof(process));
-    temp = x;
+    process* temp = x;
     x = y;
     y = temp;
     free(temp);
@@ -161,7 +162,7 @@ void insertKey(process* k , struct minHeap * minHeap,int selector){
         i = parent(i); 
     } 
     }
-    else if(selector==0){
+    else if(selector==1){
         while (i != 0 && minHeap->harr[parent(i)]->priority < minHeap->harr[i]->priority) 
         { 
             swap(minHeap->harr[i], minHeap->harr[parent(i)]); 
@@ -177,7 +178,7 @@ void insertKey(process* k , struct minHeap * minHeap,int selector){
  * @param minHeap The heap you want to operate this function on 
  */
 void ConSumeKeyValue(int i , int newValue,struct minHeap* minHeap){
-    minHeap->harr[i]->remainingtime -= newValue;
+    minHeap->harr[i]->remainingtime = newValue;
     while (i != 0 && minHeap->harr[parent(i)]->remainingtime > minHeap->harr[i]->remainingtime) 
     { 
         swap(minHeap->harr[i], minHeap->harr[parent(i)]); 
@@ -199,12 +200,17 @@ struct process* extractMin(minHeap* minHeap,int selector){
         minHeap->heap_size = 0;
         return minHeap->harr[0];
     }
-    struct process* root = (struct process*)malloc(sizeof(struct process));
-    root = minHeap->harr[0];
+    struct process* root = minHeap->harr[0];
     minHeap->harr[0] = minHeap->harr[minHeap->heap_size - 1];
     free(minHeap->harr[minHeap->heap_size - 1]);
     minHeap->heap_size -=1;
     minHeapify(minHeap,0,selector);
     return root;
 }
-#endif MINHEAP_H
+struct process* ShowMin(minHeap* minHeap,int selector){
+    if(minHeap->heap_size <= 0)
+        return NULL;
+        return minHeap->harr[0];
+    
+}
+#endif 
