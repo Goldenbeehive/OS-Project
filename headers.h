@@ -92,6 +92,11 @@ struct msg
 {
     struct process * proc; 
 };
+struct msgbuff
+{
+    long mtype;
+    int msg;
+};
 /**
  * @brief Function to initialize a process pointer given its data
  * 
