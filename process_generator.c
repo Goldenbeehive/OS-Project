@@ -91,7 +91,7 @@ int main(int argc, char * argv[])
     while (i < numOfProcesses){
         if (getClk() == processQueue[i].arrivaltime){
             struct process temp = processQueue[i];
-            msgsnd(msgid, &temp, sizeof(temp),IPC_NOWAIT);
+            msgsnd(ReadyQueueID, &temp, sizeof(temp),IPC_NOWAIT);
             //printf("Process %d sent to scheduler at time = %d\n",processQueue[i].id,processQueue[i].arrivaltime);
             i++;
         }
