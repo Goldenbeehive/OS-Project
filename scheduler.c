@@ -4,7 +4,6 @@
 
 int main(int argc, char *argv[])
 {
-
     printf("Scheduler\n");
     if (argc != 3)
     {
@@ -44,6 +43,5 @@ int main(int argc, char *argv[])
 
     // upon termination release the clock resources.
     printf("SCHEDULER DONE\n");
-    destroyClk(true);
-    kill(getppid(), SIGUSR1);
+    destroyClk(false);
 }

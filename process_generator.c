@@ -2,13 +2,12 @@
 #include "RoundRobin.h"
 int numOfProcesses = 0;
 struct process* processQueue = NULL;
-int msgid,SendQueueID,ReceiveQueueID;
+int ReadyQueueID,SendQueueID,ReceiveQueueID;
 
 void clearResources(int);
 
 int main(int argc, char * argv[])
 {
-    signal(SIGUSR1,&clearResources);
     FILE* f = fopen("processes.txt","r");
     if (f == NULL){
         perror("Error opening file");
@@ -18,7 +17,7 @@ int main(int argc, char * argv[])
     numOfProcesses = getnoOfProcesses(f);
     skipLine(f);
     int SchedAlgo,RR_Quantum = 0,i = 0;
-    printf("Enter the scheduling algorithm you want: (1 for Round Robin, 2 for xxxx, 3 for xxxx) ");
+    printf("Enter the scheduling algorithm you want: (1 for Round Robin, 2 for SRTN, 3 for HPF) ");
     scanf("%d", &SchedAlgo);
     if (SchedAlgo == 1){
         while (RR_Quantum <= 0){
@@ -97,20 +96,16 @@ int main(int argc, char * argv[])
             i++;
         }
     }
-    
-    //signal(SIGINT,clearResources);
+    signal(SIGINT,clearResources);
     waitpid(Scheduler,NULL,0);
-    //msgctl(msgid, IPC_RMID,NULL);
-    //destroyClk(true);
+    destroyClk(true);
     return 0;
 }
 
 void clearResources(int signum)
 {
-    //TODO Clears all resources in case of interruption
     free(processQueue);
-    msgctl(msgid, IPC_RMID,NULL);
+    msgctl(ReadyQueueID, IPC_RMID,NULL);
     msgctl(SendQueueID, IPC_RMID,NULL);
     msgctl(ReceiveQueueID, IPC_RMID,NULL);
-    destroyClk(true);
 }
