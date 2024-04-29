@@ -1,3 +1,5 @@
+#ifndef MINHEAP_H
+#define MINHEAP_H
 #include "headers.h"
 
 struct MinHeap {
@@ -144,3 +146,4 @@ void insertKeyHPF(struct MinHeap* minHeap, struct process k)
         i = parent(i);
     }
 }
+#endif // MINHEAP_H

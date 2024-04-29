@@ -1,6 +1,7 @@
 #include "headers.h"
 #include "RoundRobin.h"
 #include "SRTN.h"
+#include "HPF.h"
 
 int main(int argc, char *argv[])
 {
@@ -34,7 +35,7 @@ int main(int argc, char *argv[])
     }
     else if (SelectedAlgorithm == 3)
     {
-        // TODO implement the other algorithms here
+        HPF(processCount);
     }
     else
     {
