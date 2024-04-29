@@ -1,4 +1,6 @@
-The Scheduler Simulation for Single-Core Processor project aims to emulate the scheduling behavior of a single-core processor utilizing various scheduling algorithms, including Highest Priority First (HPF), Shortest Remaining Time Next (SRTN), and Round-Robin with customizable quantum. The project is designed to read input data from a file provided by the user, representing processes with information such as arrival time, priority, and burst time. Based on the selected scheduling algorithm input by the user, the simulator will schedule these processes accordingly.
+Scheduler
+
+This project aims to emulate the scheduling behavior of a single-core processor utilizing various scheduling algorithms, including Highest Priority First (HPF), Shortest Remaining Time Next (SRTN), and Round-Robin with customizable quantum. The project is designed to read input data from a file provided by the user, representing processes with information such as arrival time, priority, and burst time. Based on the selected scheduling algorithm input by the user, the simulator will schedule these processes accordingly.
 
 Highest Priority First (HPF): Schedules processes based on their priority, with the highest priority process executed first.
 
