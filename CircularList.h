@@ -18,6 +18,10 @@ struct CircularList
     int size;
 };
 
+/**
+ * Creates a new circular doubly linked list
+ * @return pointer to the list
+ */
 struct CircularList *createCircularList() {
     struct CircularList *list = (struct CircularList *)malloc(sizeof(struct CircularList));
     if (list == NULL) {
@@ -31,6 +35,11 @@ struct CircularList *createCircularList() {
     return list;
 }
 
+/**
+ * Inserts a new node at the beginning of the list
+ * @param list pointer to the list
+ * @param newData data to be inserted
+ */
 void insertAtBeginning(struct CircularList *list, struct process newData) {
     struct Node *newNode = (struct Node *)malloc(sizeof(struct Node));
     if (newNode == NULL) {
@@ -54,6 +63,11 @@ void insertAtBeginning(struct CircularList *list, struct process newData) {
     list->size++;
 }
 
+/**
+ * Inserts a new node at the end of the list
+ * @param list pointer to the list
+ * @param newData data to be inserted
+ */
 void insertAtEnd(struct CircularList *list, struct process newData) {
     struct Node *newNode = (struct Node *)malloc(sizeof(struct Node));
     if (newNode == NULL) {
@@ -76,7 +90,11 @@ void insertAtEnd(struct CircularList *list, struct process newData) {
     }
     list->size++;
 }
-
+/**
+ * @brief Deletes the node at the beginning of the list
+ * 
+ * @param list pointer to the list
+ */
 void deleteAtBeginning(struct CircularList *list) {
     if (list->head == NULL) {
         // List is empty
@@ -96,7 +114,11 @@ void deleteAtBeginning(struct CircularList *list) {
     }
     list->size--;
 }
-
+/**
+ * @brief Deletes the node at the end of the list
+ * 
+ * @param list pointer to the list
+*/
 void deleteAtEnd(struct CircularList *list) {
     if (list->head == NULL) {
         // List is empty
@@ -117,14 +139,31 @@ void deleteAtEnd(struct CircularList *list) {
     list->size--;
 }
 
+/**
+ * @brief Checks if the list is empty
+ * 
+ * @param list pointer to the list
+ * @return int 1 if the list is empty, 0 otherwise
+ */
 int isEmpty(struct CircularList *list) {
     return list->size == 0;
 }
 
+/**
+ * @brief Returns the size of the list
+ * 
+ * @param list pointer to the list
+ * @return int size of the list
+*/
 int getSize(struct CircularList *list) {
     return list->size;
 }
 
+/**
+ * @brief Displays the list
+ * 
+ * @param list pointer to the list
+*/
 void displayList(struct CircularList *list) {
     if (list->head == NULL) {
         printf("List is empty\n");
@@ -141,7 +180,11 @@ void displayList(struct CircularList *list) {
     } while (current != list->head);
     printf("\n");
 }
-
+/**
+ * @brief Destroys the list
+ * 
+ * @param list pointer to the list
+*/
 void destroyList(struct CircularList *list) {
     if (list->head == NULL) {
         free(list);
@@ -156,11 +199,23 @@ void destroyList(struct CircularList *list) {
     } while (current != list->head);
     free(list);
 }
-
+/**
+ * @brief Changes the current node to the next node
+ * 
+ * @param list pointer to the list
+ */
 void changeCurrent(struct CircularList *list) {
     list->current = list->current->next;
 }
 
+/**
+ * @brief Returns the data of the current node
+ * 
+ * @param list pointer to the list
+ * @param item pointer to the process struct to store the data
+ * 
+ * @return int 1 if the current node is not NULL, 0 otherwise
+*/
 int getCurrent(struct CircularList *list, struct process *item) {
     if (list->current == NULL) {
         return 0;
@@ -169,6 +224,14 @@ int getCurrent(struct CircularList *list, struct process *item) {
     return 1;
 }
 
+/**
+ * @brief Removes the current node from the list
+ * 
+ * @param list pointer to the list
+ * @param item pointer to the process struct to store the data
+ * 
+ * @return int 1 if the current node is not NULL, 0 otherwise
+*/
 int removeCurrent(struct CircularList *list, struct process *item) {
     if (list->current == NULL) {
         return 0;
@@ -190,6 +253,15 @@ int removeCurrent(struct CircularList *list, struct process *item) {
     }
     return 1;
 }
+
+/**
+ * @brief Changes the data of the current node
+ * 
+ * @param list pointer to the list
+ * @param item process struct to store the inserted data
+ * 
+ * @return int 1 if the current node is not NULL, 0 otherwise
+*/
 int changeCurrentData(struct CircularList *list, struct process item) {
     if (list->current == NULL) {
         return 0;
