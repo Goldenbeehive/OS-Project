@@ -2,7 +2,7 @@
 #include "RoundRobin.h"
 int numOfProcesses = 0;
 struct process* processQueue = NULL;
-int msgid;
+int msgid,SendQueueID,ReceiveQueueID;
 
 void clearResources(int);
 
@@ -67,17 +67,40 @@ int main(int argc, char * argv[])
     if (Scheduler == 0){ execv("./scheduler.out",SchedParam); }
     key_t key = ftok("Funnyman", 'A');
     msgid = msgget(key, 0666 | IPC_CREAT);
+    printf("Number of processes = %d\n",numOfProcesses);
+
+    //Initialize Send queue to send turn to process
+    key_t SendQueueKey;
+    SendQueueKey= ftok("Sendman",'A');
+    SendQueueID = msgget(SendQueueKey, 0666 | IPC_CREAT);
+    printf("Send Queue ID: %d\n",SendQueueID);
+    if (SendQueueID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+    //Initialize Receive queue to receive remaining time from process
+    key_t ReceiveQueueKey;
+    ReceiveQueueKey= ftok("Receiveman",'A');
+    ReceiveQueueID = msgget(ReceiveQueueKey, 0666 | IPC_CREAT);
+    printf("Ready Queue ID: %d\n",ReceiveQueueID);
+    if (ReceiveQueueID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
     while (i < numOfProcesses){
         if (getClk() == processQueue[i].arrivaltime){
-            msgsnd(msgid, &processQueue[i], sizeof(struct process),IPC_NOWAIT);
-            printf("Process %d sent to scheduler at time = %d\n",processQueue[i].id,processQueue[i].arrivaltime);
+            struct process temp = processQueue[i];
+            msgsnd(msgid, &temp, sizeof(temp),IPC_NOWAIT);
+            //printf("Process %d sent to scheduler at time = %d\n",processQueue[i].id,processQueue[i].arrivaltime);
             i++;
         }
     }
     
     signal(SIGCHLD,clearResources);
     signal(SIGINT,clearResources);
-    waitpid(Scheduler,NULL,0);
+    waitpid(Clock,NULL,0);
     msgctl(msgid, IPC_RMID,NULL);
     destroyClk(true);
     return 0;
@@ -88,5 +111,7 @@ void clearResources(int signum)
     //TODO Clears all resources in case of interruption
     free(processQueue);
     msgctl(msgid, IPC_RMID,NULL);
+    msgctl(SendQueueID, IPC_RMID,NULL);
+    msgctl(ReceiveQueueID, IPC_RMID,NULL);
     destroyClk(true);
 }

@@ -1,32 +1,15 @@
-
 #include "headers.h"
-#include "CircularQueue.h"
-int ProcessFinished = 0;
-struct process *currentProcess;
-struct CircularQueue *Running_Queue;
-int CheckArrivedProcesses(struct CircularQueue *RunningQueue,struct process *ArrivedProcesses, int ReadyQueueID);
-int ForkProcess(int RunningTime);
-
-void MySigHandler(int signum)
-{
-    ProcessFinished = 1;
-}
-/**
- * @brief The Round Robin Scheduler
- * 
- * @param quantum The quantum of the Round Robin Scheduler
- * @param processCount The number of processes to be scheduled
- */
+#include "CircularList.h"
+int msgid,SendQueueID,ReceiveQueueID;
 void RoundRobin(int quantum, int processCount)
 {
     printf("Round Robin Scheduler\n");
-    signal(SIGUSR1, MySigHandler);
-    int HasArrivedArray[processCount];
-    for(int i=0;i<processCount;i++)
+    int HasStartedArray[processCount+1];
+    for(int i=0;i<=processCount;i++)
     {
-        HasArrivedArray[i]=0;
+        HasStartedArray[i]=0;
     }
-    // Attach to the ready queue
+    //Initialize Ready queue to receive processes from process generator
     key_t ReadyQueueKey;
     ReadyQueueKey= ftok("Funnyman",'A');
     int ReadyQueueID = msgget(ReadyQueueKey, 0666 | IPC_CREAT);
@@ -36,126 +19,115 @@ void RoundRobin(int quantum, int processCount)
         perror("Error in create message queue");
         exit(-1);
     }
-    struct process *ArrivedProcess =NULL;
-    // Create necessary variables and queues
-    printf("Creating Running Queue\n");
-    Running_Queue = createQueue(processCount);
-    int clk = getClk();
+    //Initialize Send queue to send turn to process
+    key_t SendQueueKey;
+    SendQueueKey= ftok("Sendman",'A');
+    int SendQueueID = msgget(SendQueueKey, 0666 | IPC_CREAT);
+    printf("Send Queue ID: %d\n",SendQueueID);
+    if (SendQueueID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+    //Initialize Receive queue to receive remaining time from process
+    key_t ReceiveQueueKey;
+    ReceiveQueueKey= ftok("Receiveman",'A');
+    int ReceiveQueueID = msgget(ReceiveQueueKey, 0666 | IPC_CREAT);
+    printf("Ready Queue ID: %d\n",ReceiveQueueID);
+    if (ReceiveQueueID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+
+    struct process ArrivedProcess;
     int quantumCounter = 0;
     int remainingProcesses = processCount;
-    int previousClk;
-    // While there are still processes in the running queue
-    while (remainingProcesses != 0)
+    struct CircularList *Running_List = createCircularList();
+
+    while(remainingProcesses>0)
     {
-        clk = getClk();
+        int clk = getClk();
         printf("Current Clk: %d\n",clk);
         // Check if there are any new processes
-        ArrivedProcess = NULL;
-        while(CheckArrivedProcesses(Running_Queue,ArrivedProcess,ReadyQueueID))
+        bool StillArriving = true;
+        while(StillArriving)
         {
-            if (!isFull(Running_Queue))
+            struct process rec;
+            int received = msgrcv(ReadyQueueID, &rec, sizeof(rec), 0, IPC_NOWAIT);
+            if (received != -1)
             {
-                enqueue(Running_Queue, ArrivedProcess);
-                remainingProcesses--;
-                ArrivedProcess = NULL;
-                ArrivedProcess->pid= ForkProcess(ArrivedProcess->runningtime);
-                kill(ArrivedProcess->pid, SIGSTOP);
+                printf("Process with ID: %d has arrived\n",rec.id);
+                pid_t pid = fork();
+                    if (pid == -1) {
+                        // Fork failed
+                        perror("fork");
+                    }
+                    if (pid == 0) {
+                        // Child process
+                        char RunningTimeStr[20]; // Assuming 20 characters is enough for the string representation of currentProcess.runningtime
+                        sprintf(RunningTimeStr, "%d", rec.runningtime);
+                        printf("I'm child, my time is %s\n", RunningTimeStr);
+                        char* args[] = {"./process.out", RunningTimeStr, NULL, NULL}; // NULL terminator required for the args array
+                        execv(args[0], args);
+                        // If execv returns, it means there was an error
+                        perror("execv");
+                        exit(EXIT_FAILURE); // Exit child process with failure
+                    }
+                rec.pid = pid;    
+                insertAtEnd(Running_List,rec);
+                displayList(Running_List);
             }
             else
             {
-                printf("Queue is full\n");
+                StillArriving = false;
             }
-        }      
-        // If we have processes in running queue, We process them 
-        if (!isEmpty(Running_Queue))
+        }
+        if(!isEmpty(Running_List))
         {
-            //Check if the process finished its quantum
-            if (quantumCounter > quantum || ProcessFinished == 1) 
+            struct msgbuff receivedmsg;
+            int received = msgrcv(ReceiveQueueID, &receivedmsg, sizeof(receivedmsg.msg), 0, IPC_NOWAIT);
+            if (received != -1)
             {
-                quantumCounter = 0;
-                if (!isEmpty(Running_Queue))
+                printf("Received remaining time %d from process with PID: %ld\n",receivedmsg.msg,receivedmsg.mtype);
+                struct process p;
+                getCurrent(Running_List,&p);
+                p.remainingtime = receivedmsg.msg;
+                changeCurrentData(Running_List,p);
+                if(p.remainingtime == 0)
                 {
-                    currentProcess = getCurrent(Running_Queue);
-                    if(!ProcessFinished){
-                    kill(currentProcess->id, SIGSTOP);
-                    }
-                    else
-                    {
-                        ProcessFinished = 0;
-                        struct process *FinishedProcess = RemoveCurrent(Running_Queue);
-                        FinishedProcess->endtime = getClk();
-                    }
-                    changeCurrent(Running_Queue);
+                    printf("Process with ID: %d has finished\n",p.id);
+                    struct process Terminated;
+                    removeCurrent(Running_List,&Terminated);
+                    remainingProcesses--;
+                    quantumCounter = 0;
+                    wait(NULL);
                 }
             }
-            currentProcess = getCurrent(Running_Queue);
-            if (currentProcess != NULL)
+            if(quantumCounter == quantum)
             {
-                kill(currentProcess->id, SIGCONT);
-                if(HasArrivedArray[currentProcess->id]==0)
-                {
-                    currentProcess->starttime = getClk();
-                    HasArrivedArray[currentProcess->id]=1;
-                }
+                printf("Quantum has finished\n");
+                quantumCounter = 0;
+                changeCurrent(Running_List);
+            }
+            struct msgbuff sendmsg;
+            if(isEmpty(Running_List))
+            {
+                continue;
+            }
+            sendmsg.mtype = Running_List->current->data.pid;
+            sendmsg.msg = 1;
+            int send = msgsnd(SendQueueID, &sendmsg, sizeof(sendmsg.msg), IPC_NOWAIT);
+            if (send == -1)
+            {
+                perror("Error in send message");
+                exit(-1);
             }
             quantumCounter++;
         }
-        while (getClk() == clk)
-        {
-            // Do nothing
-        }
+        while(clk == getClk()){};
     }
 }
-
-/**
- * @brief Checks if a process has arrived in the ready queue 
- * 
- * @param RunningQueue The Running queue of the scheduler
- * @param ArrivedProcesses Pointer to the process struct that will be filled with the arrived process
- * @param ReadyQueueID The ready queue id of message queue to be checked
- * @return int , 1 if a process has arrived, 0 if no process has arrived
- */
-int CheckArrivedProcesses(struct CircularQueue *RunningQueue,struct process *ArrivedProcesses, int ReadyQueueID)
-{
-    int received = msgrcv(ReadyQueueID, &ArrivedProcesses, sizeof(ArrivedProcesses), 0, IPC_NOWAIT);
-    if(received!=-1)
-    {
-        printf("Received Process with ID: %d\n",ArrivedProcesses->id);
-        return 1;
-    }
-    else
-    {
-        printf("No Process Received\n");
-        return 0;
-    }
-}
-/**
- * @brief Creates a new process and forks it
- * 
- * @param RunningTime The amount of time the process will run
- * @return int returns the pid of the forked process if successful, -1 if failed
- */
-int ForkProcess(int RunningTime)
-{
-    int pid = fork();
-    if (pid == -1)
-    {
-        perror("Error in forking the process");
-    }
-    if (pid == 0)
-    {
-        char RunningTimeStr[12];
-        sprintf(RunningTimeStr, "%d", RunningTime);
-        char *args[] = {"./process.out", RunningTimeStr, NULL};
-        execv(args[0], args);
-    }
-    return pid;
-}
-
-struct msgbuf {
-    long mtype;
-    char mtext[100];
-}; 
 int main()
 {
     initClk();
@@ -163,17 +135,14 @@ int main()
     key_t ReadyQueueKey;
     ReadyQueueKey= ftok("Funnyman",'A');
     int ReadyQueueID = msgget(ReadyQueueKey, 0666 | IPC_CREAT);
-
-    struct msgbuf message;
-    message.mtype = 1;
-    message.mtext[0] = 'A';
-    //int rec_val = msgsnd(ReadyQueueID, &message, sizeof(message.mtext), !IPC_NOWAIT);
-    struct process *Dummy;
-    Dummy=initializeProcess(0,0,0,0);
-    msgsnd(ReadyQueueID, &Dummy, sizeof(Dummy),!IPC_NOWAIT);
-    RoundRobin(2, 1);
-
+    struct process dummy=initializeProcess(1,8,19,3);
+    struct process dummy2=initializeProcess(2,10,1,1);
+    msgsnd(ReadyQueueID, &dummy, sizeof(struct process),IPC_NOWAIT);
+    msgsnd(ReadyQueueID, &dummy2, sizeof(struct process),IPC_NOWAIT);
+    RoundRobin(4,2);
     msgctl(ReadyQueueID, IPC_RMID,NULL);
+    msgctl(SendQueueID, IPC_RMID,NULL);
+    msgctl(ReceiveQueueID, IPC_RMID,NULL);
     destroyClk(true);
     return 0;
 }
