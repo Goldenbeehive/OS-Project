@@ -1,17 +1,9 @@
-## headers.h contains clk functions, it should be included anywhere the clock functions are used.
+The Scheduler Simulation for Single-Core Processor project aims to emulate the scheduling behavior of a single-core processor utilizing various scheduling algorithms, including Highest Priority First (HPF), Shortest Remaining Time Next (SRTN), and Round-Robin with customizable quantum. The project is designed to read input data from a file provided by the user, representing processes with information such as arrival time, priority, and burst time. Based on the selected scheduling algorithm input by the user, the simulator will schedule these processes accordingly.
 
-## To get time call:
+Highest Priority First (HPF): Schedules processes based on their priority, with the highest priority process executed first.
 
-getClk();
+Shortest Remaining Time Next (SRTN): Selects the process with the shortest remaining burst time for execution.
 
-## You can use Makefile to build and run your project
+Round-Robin with Customizable Quantum: Implements a round-robin scheduling algorithm where each process is executed for a predefined quantum of time which is customizable by the user.
 
-# To compile your project, use the command:
-make
-
-# To run your project, use the command:
-make run
-
-# If you added a file to your project add it to the build section in the Makefile
-
-# Always start the line with a tab in Makefile, it is its syntax
+Upon completion of the simulation, the project generates output files describing the timeline of the program and statistics. The scheduler.log file details the timeline of process execution, including start, stop, finish, and resumption times. On the other hand, the scheduler.perf file presents performance metrics such as CPU utilization, average turnaround time (WTA), average waiting time, and standard deviation of WTA.
