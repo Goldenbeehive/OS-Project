@@ -1,37 +1,14 @@
 #include "MinHeap.h"
 #include "headers.h"
 
-// int ProcessFinished = false;
-
-// void DefineKeys(int* ReadyQueueID, int* SendQueueID, int* ReceiveQueueID){
-//     key_t ReadyQueueKey;
-//     ReadyQueueKey= ftok("Funnyman",'A');
-//     *ReadyQueueID = msgget(ReadyQueueKey, 0666 | IPC_CREAT);
-//     if (*ReadyQueueID == -1)
-//     {
-//         perror("Error in create message queue");
-//         exit(-1);
-//     }
-//     //Initialize Send queue to send turn to process
-//     key_t SendQueueKey;
-//     SendQueueKey= ftok("Sendman",'A');
-//     *SendQueueID = msgget(SendQueueKey, 0666 | IPC_CREAT);
-//     if (*SendQueueID == -1)
-//     {
-//         perror("Error in create message queue");
-//         exit(-1);
-//     }
-//     //Initialize Receive queue to receive remaining time from process
-//     key_t ReceiveQueueKey;
-//     ReceiveQueueKey= ftok("Receiveman",'A');
-//     *ReceiveQueueID = msgget(ReceiveQueueKey, 0666 | IPC_CREAT);
-//     if (*ReceiveQueueID == -1)
-//     {
-//         perror("Error in create message queue");
-//         exit(-1);
-//     }
-// }
-
+/**
+ * @brief Inserts the arrived process in the MinHeap
+ * 
+ * @param minHeap  The MinHeap to insert the process in
+ * @param ReadyQueueID  The ID of the Ready Queue
+ * @return true 
+ * @return false 
+ */
 bool ReceiveProcessHPF(struct MinHeap* minHeap,int ReadyQueueID){
     struct process ArrivedProcess;
     int received = msgrcv(ReadyQueueID, &ArrivedProcess, sizeof(ArrivedProcess), 0, IPC_NOWAIT);
@@ -43,24 +20,31 @@ bool ReceiveProcessHPF(struct MinHeap* minHeap,int ReadyQueueID){
         pid_t pid = fork();
         if (pid == 0){ execv(args[0], args); }
         ArrivedProcess.pid = pid;
-        insertKeyHPF(minHeap, ArrivedProcess);
+        insertHPF(minHeap, ArrivedProcess);
         return true;
     }
     return false;
 }
 
+/**
+ * @brief   The Highest Priority First Scheduling Algorithm
+ * 
+ * @param noOfProcesses  The number of processes to be scheduled
+ */
 void HPF(int noOfProcesses){
     int remainingProcesses = noOfProcesses;
     struct MinHeap* minHeap = createMinHeap(noOfProcesses);
     int ReadyQueueID, SendQueueID, ReceiveQueueID;
     DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
+    bool firstarrived = true;
     while (remainingProcesses > 0){
         int clk = getClk();
         struct process currentProcess;
         printf("Current clock = %d\n",clk);
         while (ReceiveProcessHPF(minHeap,ReadyQueueID));
         if (minHeap->heap_size > 0){
-            if (remainingProcesses == noOfProcesses){ currentProcess = getMin(minHeap); }
+            struct process currentProcess;
+            if (firstarrived){ currentProcess = getMin(minHeap); firstarrived = false; }
             struct msgbuff receivedmsg;
             int received = msgrcv(ReceiveQueueID, &receivedmsg, sizeof(receivedmsg.msg), 0, IPC_NOWAIT);
             if (received != -1){ 
@@ -69,7 +53,8 @@ void HPF(int noOfProcesses){
             }
             if (currentProcess.remainingtime == 0){
                 printf("Process with ID: %d has finished\n",currentProcess.id);
-                struct process Terminated = extractMin(minHeap,0);
+                Remove(minHeap,currentProcess);
+                struct process Terminated = currentProcess;
                 remainingProcesses--;
                 wait(NULL);
                 if (minHeap->heap_size != 0){ currentProcess = getMin(minHeap); }

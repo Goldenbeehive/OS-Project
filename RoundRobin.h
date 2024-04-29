@@ -11,35 +11,8 @@ void RoundRobin(int quantum, int processCount)
         HasStartedArray[i]=0;
     }
     //Initialize Ready queue to receive processes from process generator
-    key_t ReadyQueueKey;
-    ReadyQueueKey= ftok("Funnyman",'A');
-    int ReadyQueueID = msgget(ReadyQueueKey, 0666 | IPC_CREAT);
-    printf("Ready Queue ID: %d\n",ReadyQueueID);
-    if (ReadyQueueID == -1)
-    {
-        perror("Error in create message queue");
-        exit(-1);
-    }
-    //Initialize Send queue to send turn to process
-    key_t SendQueueKey;
-    SendQueueKey= ftok("Sendman",'A');
-    int SendQueueID = msgget(SendQueueKey, 0666 | IPC_CREAT);
-    printf("Send Queue ID: %d\n",SendQueueID);
-    if (SendQueueID == -1)
-    {
-        perror("Error in create message queue");
-        exit(-1);
-    }
-    //Initialize Receive queue to receive remaining time from process
-    key_t ReceiveQueueKey;
-    ReceiveQueueKey= ftok("Receiveman",'A');
-    int ReceiveQueueID = msgget(ReceiveQueueKey, 0666 | IPC_CREAT);
-    printf("Ready Queue ID: %d\n",ReceiveQueueID);
-    if (ReceiveQueueID == -1)
-    {
-        perror("Error in create message queue");
-        exit(-1);
-    }
+    int ReadyQueueID,SendQueueID,ReceiveQueueID;
+    DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
     int quantumCounter = 0;
     int remainingProcesses = processCount;
     struct CircularList *Running_List = createCircularList();

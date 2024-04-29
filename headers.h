@@ -107,16 +107,6 @@ struct msgbuff
  * @param memsize The memory that the process needs.
  * @return struct process* returns a pointer to the process created
  */
-void initializeProcessptr(int id, int arrivaltime, int runningtime, int priority, struct process *p){
-    p = malloc(sizeof(struct process));
-    p->id = id;
-    p->pid = getpid();
-    p->arrivaltime = arrivaltime;
-    p->runningtime = runningtime; // Corrected bursttime assignment
-    p->priority = priority;
-    p->remainingtime = runningtime;
-    return;
-}
 struct process initializeProcess(int id, int arrivaltime, int runningtime, int priority) {
     struct process p;
     p.id = id;
@@ -126,15 +116,28 @@ struct process initializeProcess(int id, int arrivaltime, int runningtime, int p
     p.remainingtime = runningtime;
     return p;
 }
+
 void testerfunction(struct process* p){
     printf("%d %d %d %d %d",p->id,p->arrivaltime,p->runningtime,p->remainingtime,p->priority);
     printf("\n");
 }
 
+/**
+ * @brief Skips the first line of the file
+ * 
+ * @param f  The file pointer to the file you want to read from
+ */
 void skipLine(FILE* f){
     char ignore[IGNORE_LENGTH];
     fgets(ignore,IGNORE_LENGTH,f);
 }
+
+/**
+ * @brief Gets the number of processes in the file
+ * 
+ * @param f The file pointer to the file you want to read from
+ * @return int The number of processes in the file
+ */
 int getnoOfProcesses(FILE* f){
     int c;
     int count = 0;
@@ -143,6 +146,68 @@ int getnoOfProcesses(FILE* f){
     return count;
 }
 
+/**
+ * @brief  Define the keys for the message queues
+ * 
+ * @param ReadyQueueID  The ID of the Ready Queue
+ * @param SendQueueID  The ID of the Send Queue
+ * @param ReceiveQueueID  The ID of the Receive Queue
+ */
+void DefineKeys(int* ReadyQueueID, int* SendQueueID, int* ReceiveQueueID){
+    key_t ReadyQueueKey;
+    ReadyQueueKey= ftok("keys/Funnyman",'A');
+    *ReadyQueueID = msgget(ReadyQueueKey, 0666 | IPC_CREAT);
+    if (*ReadyQueueID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+    //Initialize Send queue to send turn to process
+    key_t SendQueueKey;
+    SendQueueKey= ftok("keys/Sendman",'A');
+    *SendQueueID = msgget(SendQueueKey, 0666 | IPC_CREAT);
+    if (*SendQueueID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+    //Initialize Receive queue to receive remaining time from process
+    key_t ReceiveQueueKey;
+    ReceiveQueueKey= ftok("keys/Receiveman",'A');
+    *ReceiveQueueID = msgget(ReceiveQueueKey, 0666 | IPC_CREAT);
+    if (*ReceiveQueueID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+}
+/**
+ * @brief  Define the keys for the message queues
+ * 
+ * @param SendQueueID  The ID of the Send Queue 
+ * @param ReceiveQueueID  The ID of the Receive Queue
+ */
+void DefineKeysProcess(int* SendQueueID, int* ReceiveQueueID){
+
+    //Initialize Send queue to send turn to process
+    key_t SendQueueKey;
+    SendQueueKey= ftok("keys/Sendman",'A');
+    *SendQueueID = msgget(SendQueueKey, 0666 | IPC_CREAT);
+    if (*SendQueueID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+    //Initialize Receive queue to receive remaining time from process
+    key_t ReceiveQueueKey;
+    ReceiveQueueKey= ftok("keys/Receiveman",'A');
+    *ReceiveQueueID = msgget(ReceiveQueueKey, 0666 | IPC_CREAT);
+    if (*ReceiveQueueID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+}
 
 
 #endif // HEADERS_H

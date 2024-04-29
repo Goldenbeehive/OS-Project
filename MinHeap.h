@@ -14,19 +14,29 @@ void MinHeapifyHPF(struct MinHeap* minHeap, int i);
 int parent(int i);
 int left(int i);
 int right(int i);
+void Remove(struct MinHeap* minHeap, struct process currentProcess);
 struct process extractMin(struct MinHeap* minHeap,bool SRTN);
-//void decreaseKey(struct MinHeap* minHeap, int i, int new_val);
 struct process getMin(struct MinHeap* minHeap);
-//void deleteKey(struct MinHeap* minHeap, int i);
-void insertKeySRTN(struct MinHeap* minHeap, struct process k);
-void insertKeyHPF(struct MinHeap* minHeap, struct process k);
+void insertSRTN(struct MinHeap* minHeap, struct process k);
+void insertHPF(struct MinHeap* minHeap, struct process k);
 void destroy(struct MinHeap* minHeap);
 
+/**
+ * @brief Destroy the MinHeap object
+ * 
+ * @param minHeap  The MinHeap to be destroyed
+ */
 void destroy(struct MinHeap* minHeap){
     free(minHeap->harr);
     free(minHeap);
 }
 
+/**
+ * @brief Create a Min Heap object
+ * 
+ * @param capacity The capacity of the heap 
+ * @return struct MinHeap* 
+ */
 struct MinHeap* createMinHeap(int capacity)
 {
     struct MinHeap* minHeap = (struct MinHeap*)malloc(sizeof(struct MinHeap));
@@ -36,6 +46,12 @@ struct MinHeap* createMinHeap(int capacity)
     return minHeap;
 }
 
+/**
+ * @brief The SRTN MinHeapify function
+ * 
+ * @param minHeap  The MinHeap to be heapified 
+ * @param i  The index to start heapifying from
+ */
 void MinHeapifySRTN(struct MinHeap* minHeap, int i)
 {
     int l = left(i);
@@ -53,6 +69,12 @@ void MinHeapifySRTN(struct MinHeap* minHeap, int i)
     }
 }
 
+/**
+ * @brief  The HPF MinHeapify function
+ * 
+ * @param minHeap  The MinHeap to be heapified
+ * @param i  The index to start heapifying from
+ */
 void MinHeapifyHPF(struct MinHeap* minHeap, int i){
     int l = left(i);
     int r = right(i);
@@ -68,11 +90,28 @@ void MinHeapifyHPF(struct MinHeap* minHeap, int i){
         MinHeapifyHPF(minHeap, smallest);
     }
 }
-
+/**
+ * @brief  Finds the index of the parent node given the index of the child node
+ * 
+ * @param i The index of the child node 
+ * @return int 
+ */
 int parent(int i){ return (i - 1) / 2; }
 
+/**
+ * @brief  Finds the index of the left child node given the index of the parent node
+ * 
+ * @param i  The index of the parent node
+ * @return int 
+ */
 int left(int i){ return (2 * i + 1); }
 
+/**
+ * @brief  Finds the index of the right child node given the index of the parent node
+ * 
+ * @param i  The index of the parent node
+ * @return int 
+ */
 int right(int i){ return (2 * i + 2); }
 
 struct process extractMin(struct MinHeap* minHeap,bool SRTN){
@@ -89,27 +128,39 @@ struct process extractMin(struct MinHeap* minHeap,bool SRTN){
     return root;
 }
 
-// void decreaseKey(struct MinHeap* minHeap, int i, int new_val)
-// {
-//     minHeap->harr[i] = new_val;
-//     while (i != 0 && minHeap->harr[parent(i)] > minHeap->harr[i])
-//     {
-//         struct process temp = minHeap->harr[i];
-//         minHeap->harr[i] = minHeap->harr[parent(i)];
-//         minHeap->harr[parent(i)] = temp;
-//         i = parent(i);
-//     }
-// }
+/**
+ * @brief  Remove a process from the MinHeap
+ * 
+ * @param minHeap  The MinHeap to remove the process from
+ * @param currentProcess  The process to be removed
+ */
+void Remove(struct MinHeap* minHeap, struct process currentProcess){
+    int i = 0;
+    for (i = 0; i < minHeap->heap_size; i++) {
+        if (minHeap->harr[i].id == currentProcess.id)
+            break;
+    }
+    minHeap->harr[i] = minHeap->harr[minHeap->heap_size - 1];
+    minHeap->heap_size--;
+    MinHeapifyHPF(minHeap,0);
+}
 
+/**
+ * @brief Get the Min object
+ * 
+ * @param minHeap  The MinHeap to get the minimum from
+ * @return struct process 
+ */
 struct process getMin(struct MinHeap* minHeap){ return minHeap->harr[0]; }
 
-// void deleteKey(struct MinHeap* minHeap, int i)
-// {
-//     decreaseKey(minHeap, i, INT_MIN);
-//     extractMin(minHeap);
-// }
 
-void insertKeySRTN(struct MinHeap* minHeap, struct process k)
+/**
+ * @brief  Insert a process in the MinHeap
+ * 
+ * @param minHeap  The MinHeap to insert the process in
+ * @param k  The process to be inserted
+ */
+void insertSRTN(struct MinHeap* minHeap, struct process k)
 {
     if (minHeap->heap_size == minHeap->capacity)
     {
@@ -128,7 +179,13 @@ void insertKeySRTN(struct MinHeap* minHeap, struct process k)
     }
 }
 
-void insertKeyHPF(struct MinHeap* minHeap, struct process k)
+/**
+ * @brief  Insert a process in the MinHeap
+ * 
+ * @param minHeap  The MinHeap to insert the process in
+ * @param k  The process to be inserted
+ */
+void insertHPF(struct MinHeap* minHeap, struct process k)
 {
     if (minHeap->heap_size == minHeap->capacity)
     {

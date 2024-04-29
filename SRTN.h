@@ -1,37 +1,15 @@
 #include "MinHeap.h"
 #include "headers.h"
 
-int ProcessFinished = false;
 
-void DefineKeys(int* ReadyQueueID, int* SendQueueID, int* ReceiveQueueID){
-    key_t ReadyQueueKey;
-    ReadyQueueKey= ftok("Funnyman",'A');
-    *ReadyQueueID = msgget(ReadyQueueKey, 0666 | IPC_CREAT);
-    if (*ReadyQueueID == -1)
-    {
-        perror("Error in create message queue");
-        exit(-1);
-    }
-    //Initialize Send queue to send turn to process
-    key_t SendQueueKey;
-    SendQueueKey= ftok("Sendman",'A');
-    *SendQueueID = msgget(SendQueueKey, 0666 | IPC_CREAT);
-    if (*SendQueueID == -1)
-    {
-        perror("Error in create message queue");
-        exit(-1);
-    }
-    //Initialize Receive queue to receive remaining time from process
-    key_t ReceiveQueueKey;
-    ReceiveQueueKey= ftok("Receiveman",'A');
-    *ReceiveQueueID = msgget(ReceiveQueueKey, 0666 | IPC_CREAT);
-    if (*ReceiveQueueID == -1)
-    {
-        perror("Error in create message queue");
-        exit(-1);
-    }
-}
-
+/**
+ * @brief  Receive a process from the Ready Queue
+ * 
+ * @param minHeap  The MinHeap to insert the process in
+ * @param ReadyQueueID  The ID of the Ready Queue
+ * @return true 
+ * @return false 
+ */
 bool ReceiveProcess(struct MinHeap* minHeap,int ReadyQueueID){
     struct process ArrivedProcess;
     int received = msgrcv(ReadyQueueID, &ArrivedProcess, sizeof(ArrivedProcess), 0, IPC_NOWAIT);
@@ -43,12 +21,17 @@ bool ReceiveProcess(struct MinHeap* minHeap,int ReadyQueueID){
         pid_t pid = fork();
         if (pid == 0){ execv(args[0], args); }
         ArrivedProcess.pid = pid;
-        insertKeySRTN(minHeap, ArrivedProcess);
+        insertSRTN(minHeap, ArrivedProcess);
         return true;
     }
     return false;
 }
 
+/**
+ * @brief  Run the Shortest Remaining Time Next Algorithm
+ * 
+ * @param noOfProcesses  The number of processes
+ */
 void SRTN(int noOfProcesses){
     int remainingProcesses = noOfProcesses;
     struct MinHeap* minHeap = createMinHeap(noOfProcesses);
