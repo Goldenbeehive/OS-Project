@@ -65,7 +65,7 @@ int main(int argc, char * argv[])
     pid_t Scheduler = fork();
     if (Scheduler == 0){ execv("./scheduler.out",SchedParam); }
     key_t key = ftok("Funnyman", 'A');
-    msgid = msgget(key, 0666 | IPC_CREAT);
+    ReadyQueueID = msgget(key, 0666 | IPC_CREAT);
     printf("Number of processes = %d\n",numOfProcesses);
 
     //Initialize Send queue to send turn to process
