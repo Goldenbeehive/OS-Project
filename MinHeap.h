@@ -2,6 +2,10 @@
 #define MINHEAP_H
 #include "headers.h"
 
+/**
+ * @brief The MinHeap struct
+ * 
+ */
 struct MinHeap {
     struct process *harr;
     int capacity;
@@ -20,6 +24,7 @@ struct process getMin(struct MinHeap* minHeap);
 void insertSRTN(struct MinHeap* minHeap, struct process k);
 void insertHPF(struct MinHeap* minHeap, struct process k);
 void destroy(struct MinHeap* minHeap);
+struct process* getMin_ptr(struct MinHeap* minHeap);
 
 /**
  * @brief Destroy the MinHeap object
@@ -114,6 +119,13 @@ int left(int i){ return (2 * i + 1); }
  */
 int right(int i){ return (2 * i + 2); }
 
+/**
+ * @brief  Extract the minimum process from the MinHeap
+ * 
+ * @param minHeap  The MinHeap to extract the minimum from
+ * @param SRTN  The flag to determine if the process is extracted from SRTN or HPF
+ * @return struct process 
+ */
 struct process extractMin(struct MinHeap* minHeap,bool SRTN){
     if (minHeap->heap_size == 1)
     {
@@ -127,6 +139,14 @@ struct process extractMin(struct MinHeap* minHeap,bool SRTN){
     else { MinHeapifyHPF(minHeap, 0); }
     return root;
 }
+
+/**
+ * @brief Get the Min ptr object
+ * 
+ * @param minHeap The MinHeap to get the minimum from 
+ * @return struct process* 
+ */
+struct process* getMin_ptr(struct MinHeap* minHeap){ return &minHeap->harr[0]; }
 
 /**
  * @brief  Remove a process from the MinHeap

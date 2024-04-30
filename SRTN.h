@@ -39,12 +39,11 @@ void SRTN(int noOfProcesses){
     DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
     while (remainingProcesses > 0){
         int clk = getClk();
-        struct process* currentProcess, tmp;
+        struct process* currentProcess = NULL, tmp;
         printf("Current clock = %d\n",clk);
         while (ReceiveProcess(minHeap,ReadyQueueID));
         if (minHeap->heap_size > 0){
-            tmp = getMin(minHeap);
-            currentProcess = &tmp;
+            currentProcess = getMin_ptr(minHeap);
             struct msgbuff receivedmsg;
             int received = msgrcv(ReceiveQueueID, &receivedmsg, sizeof(receivedmsg.msg), 0, IPC_NOWAIT);
             if (received != -1){ 
@@ -55,7 +54,7 @@ void SRTN(int noOfProcesses){
                 struct process Terminated = extractMin(minHeap,1);
                 remainingProcesses--;
                 wait(NULL);
-                if (minHeap->heap_size != 0){ tmp = getMin(minHeap); currentProcess = &tmp; }
+                if (minHeap->heap_size != 0){ currentProcess = getMin_ptr(minHeap);}
             }
             if (minHeap->heap_size == 0){ continue; }
             struct msgbuff sendmsg;
