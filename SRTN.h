@@ -39,31 +39,31 @@ void SRTN(int noOfProcesses){
     DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
     while (remainingProcesses > 0){
         int clk = getClk();
-        struct process currentProcess;
+        struct process* currentProcess, tmp;
         printf("Current clock = %d\n",clk);
         while (ReceiveProcess(minHeap,ReadyQueueID));
         if (minHeap->heap_size > 0){
-            currentProcess = getMin(minHeap);
+            tmp = getMin(minHeap);
+            currentProcess = &tmp;
             struct msgbuff receivedmsg;
             int received = msgrcv(ReceiveQueueID, &receivedmsg, sizeof(receivedmsg.msg), 0, IPC_NOWAIT);
             if (received != -1){ 
-                minHeap->harr[0].remainingtime = receivedmsg.msg;
-                currentProcess.remainingtime = receivedmsg.msg;
+                currentProcess->remainingtime = receivedmsg.msg;
             }
-            if (currentProcess.remainingtime == 0){
-                printf("Process with ID: %d has finished\n",currentProcess.id);
+            if (currentProcess->remainingtime == 0){
+                printf("Process with ID: %d has finished\n",currentProcess->id);
                 struct process Terminated = extractMin(minHeap,1);
                 remainingProcesses--;
                 wait(NULL);
-                if (minHeap->heap_size != 0){ currentProcess = getMin(minHeap); }
+                if (minHeap->heap_size != 0){ tmp = getMin(minHeap); currentProcess = &tmp; }
             }
             if (minHeap->heap_size == 0){ continue; }
             struct msgbuff sendmsg;
-            sendmsg.mtype = currentProcess.pid;
+            sendmsg.mtype = currentProcess->pid;
             sendmsg.msg = 1;
             //Send the turn to the current process
             int send = msgsnd(SendQueueID, &sendmsg, sizeof(sendmsg.msg), IPC_NOWAIT);
-            printf("Process %d with pid = %d is running\n", currentProcess.id,currentProcess.pid);
+            printf("Process %d with pid = %d is running\n", currentProcess->id,currentProcess->pid);
         }
         while (clk == getClk());
     }
