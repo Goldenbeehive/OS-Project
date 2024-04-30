@@ -100,7 +100,7 @@ int main(int argc, char * argv[])
     
     signal(SIGCHLD,clearResources);
     signal(SIGINT,clearResources);
-    waitpid(Clock,NULL,0);
+    waitpid(Scheduler,NULL,0);
     msgctl(msgid, IPC_RMID,NULL);
     destroyClk(true);
     return 0;

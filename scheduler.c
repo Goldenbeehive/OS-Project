@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     {
         printf("Invalid Algorithm\n");
     }
-
+    
     // upon termination release the clock resources.
     printf("SCHEDULER DONE\n");
     destroyClk(true);
