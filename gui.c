@@ -6,7 +6,41 @@
 #include "gui_window_file_dialog.h"
 #include "style_cyber.h"
 #include "style_bluish.h"
+#include <stdio.h> //if you don't use scanf/printf change this include
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/file.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/sem.h>
+#include <sys/msg.h>
+#include <sys/wait.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
 #include <string.h>
+void DrawSineWave(int *endOfAnimWidth, const int screenHeight, const int screenWidth, float *time)
+{
+    for (int x = 0; x < *endOfAnimWidth; x++)
+    {
+        float normalizedX = x / (float)screenWidth;
+        float angle = PI * 2 * normalizedX + *time;
+        float y = sin(angle) * (screenHeight / 4);
+        float y2 = cos(angle + PI / 2) * (screenHeight / 4);
+        if (x == *endOfAnimWidth - 1)
+        {
+            DrawCircle(x, screenHeight / 2 - (int)y, 20, RED);
+            DrawCircle(x, screenHeight / 2 - (int)y2, 20, BLUE);
+        }
+        DrawPixel(x, screenHeight / 2 - (int)y, RED);
+        DrawPixel(x, screenHeight / 2 - (int)y2, BLUE);
+    }
+    *time += GetFrameTime();
+    if (*endOfAnimWidth != screenWidth - 50)
+    {
+        *endOfAnimWidth++;
+    }
+}
 struct process
 {
     int id;
@@ -80,11 +114,11 @@ int main(void)
         2 -> Simulation Page
         3 -> Statistics Page
     */
-    int pageShifter = 2;
+    int pageShifter = 0;
 
     while (loop)
     {
-
+        printf("%i \n", endOfAnimWidth);
         BeginDrawing();
         if (pageShifter == 0)
         {
@@ -112,26 +146,7 @@ int main(void)
                 pageShifter = 1;
             }
             /*Background Animation*/
-            for (int x = 0; x < endOfAnimWidth; x++)
-            {
-                float normalizedX = x / (float)screenWidth;
-                float angle = PI * 2 * normalizedX + time;
-                float y = sin(angle) * (screenHeight / 4);
-                float y2 = cos(angle + PI / 2) * (screenHeight / 4);
-                if (x == endOfAnimWidth - 1)
-                {
-                    DrawCircle(x, screenHeight / 2 - (int)y, 20, RED);
-                    DrawCircle(x, screenHeight / 2 - (int)y2, 20, BLUE);
-                }
-                DrawPixel(x, screenHeight / 2 - (int)y, RED);
-                DrawPixel(x, screenHeight / 2 - (int)y2, BLUE);
-            }
-
-            time += GetFrameTime();
-            if (endOfAnimWidth != screenWidth - 50)
-            {
-                endOfAnimWidth++;
-            }
+            DrawSineWave(&endOfAnimWidth, screenHeight, screenWidth, &time);
         }
 
         if (pageShifter == 1)
@@ -209,6 +224,14 @@ int main(void)
                 }
                 if (!txtError && !rrError)
                 {
+                    char algoChoicestr[5];
+                    sprintf(algoChoicestr, "%d", algoChoice + 1);
+                    char *args[] = {"./process_generator.out", fileDialogState.fileNameText, algoChoicestr, rrQuantum, NULL};
+                    pid_t ProcessGen = fork();
+                    if (ProcessGen == 0)
+                    {
+                        execv(args[0], args);
+                    }
                     pageShifter = 2;
                 }
             }
@@ -216,26 +239,7 @@ int main(void)
             GuiUnlock();
 
             GuiWindowFileDialog(&fileDialogState);
-            /* Background Animation */
-            for (int x = 0; x < endOfAnimWidth; x++)
-            {
-                float normalizedX = x / (float)screenWidth;
-                float angle = PI * 2 * normalizedX + time;
-                float y = sin(angle) * (screenHeight / 4);
-                float y2 = cos(angle + PI / 2) * (screenHeight / 4);
-                if (x == endOfAnimWidth - 1)
-                {
-                    DrawCircle(x, screenHeight / 2 - (int)y, 20, RED);
-                    DrawCircle(x, screenHeight / 2 - (int)y2, 20, BLUE);
-                }
-                DrawPixel(x, screenHeight / 2 - (int)y, RED);
-                DrawPixel(x, screenHeight / 2 - (int)y2, BLUE);
-            }
-            time += GetFrameTime();
-            if (endOfAnimWidth != screenWidth - 50)
-            {
-                endOfAnimWidth++;
-            }
+            DrawSineWave(&endOfAnimWidth, screenHeight, screenWidth, &time);
         }
         if (pageShifter == 2)
         {
@@ -266,25 +270,7 @@ int main(void)
             }
 
             /* Background Animation */
-            for (int x = 0; x < endOfAnimWidth; x++)
-            {
-                float normalizedX = x / (float)screenWidth;
-                float angle = PI * 2 * normalizedX + time;
-                float y = sin(angle) * (screenHeight / 4);
-                float y2 = cos(angle + PI / 2) * (screenHeight / 4);
-                if (x == endOfAnimWidth - 1)
-                {
-                    DrawCircle(x, screenHeight / 2 - (int)y, 20, RED);
-                    DrawCircle(x, screenHeight / 2 - (int)y2, 20, BLUE);
-                }
-                DrawPixel(x, screenHeight / 2 - (int)y, RED);
-                DrawPixel(x, screenHeight / 2 - (int)y2, BLUE);
-            }
-            time += GetFrameTime();
-            if (endOfAnimWidth != screenWidth - 50)
-            {
-                endOfAnimWidth++;
-            }
+            DrawSineWave(&endOfAnimWidth, screenHeight, screenWidth, &time);
         }
         if (pageShifter == 3)
         {
@@ -309,25 +295,6 @@ int main(void)
             if (GuiButton((Rectangle){screenWidth / 2 - 100, screenHeight - 50, 200, 40}, "Back to Title Screen"))
             {
                 pageShifter = 0;
-            }
-            for (int x = 0; x < endOfAnimWidth; x++)
-            {
-                float normalizedX = x / (float)screenWidth;
-                float angle = PI * 2 * normalizedX + time;
-                float y = sin(angle) * (screenHeight / 4);
-                float y2 = cos(angle + PI / 2) * (screenHeight / 4);
-                if (x == endOfAnimWidth - 1)
-                {
-                    DrawCircle(x, screenHeight / 2 - (int)y, 20, RED);
-                    DrawCircle(x, screenHeight / 2 - (int)y2, 20, BLUE);
-                }
-                DrawPixel(x, screenHeight / 2 - (int)y, RED);
-                DrawPixel(x, screenHeight / 2 - (int)y2, BLUE);
-            }
-            time += GetFrameTime();
-            if (endOfAnimWidth != screenWidth - 50)
-            {
-                endOfAnimWidth++;
             }
         }
         EndDrawing();
