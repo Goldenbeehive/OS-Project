@@ -6,6 +6,23 @@
 #include "gui_window_file_dialog.h"
 #include "style_cyber.h"
 #include "style_bluish.h"
+#include <string.h>
+struct process
+{
+    int id;
+    int arrivaltime;
+    int runningtime;
+    int priority;
+    int starttime;
+    int endtime;
+    int remainingtime;
+    int waittime;
+    int responsetime;
+    int finishtime;
+    int turnaroundtime;
+    int lasttime;
+    int flag;
+};
 int isInteger(const char *str)
 {
     int i = 0;
@@ -18,6 +35,13 @@ int isInteger(const char *str)
         i++;
     }
     return str[i] == '\0';
+}
+
+char *processToString(struct process temp)
+{
+    char str[100];
+    sprintf(str, "P%d AT:%d RUN:%d Remaining:%d Priority:%d", temp.id, temp.arrivaltime, temp.runningtime, temp.remainingtime, temp.priority);
+    return str;
 }
 int main(void)
 {
@@ -46,6 +70,9 @@ int main(void)
     int listViewActive = -1;
     int listViewScrollIndex2 = 0;
     int listViewActive2 = -1;
+    char rdyList[1024] = "P2 AT:20 RUN:30 Remaining:25 Priority:88";
+    char doneList[1024] = "P0;P1;P2;P3;P4";
+    char workingList[1024] = "P5";
 
     /*  Page List:
         0 -> Title Page
@@ -53,11 +80,11 @@ int main(void)
         2 -> Simulation Page
         3 -> Statistics Page
     */
-    int pageShifter = 0;
+    int pageShifter = 2;
 
     while (loop)
     {
-        
+
         BeginDrawing();
         if (pageShifter == 0)
         {
@@ -226,13 +253,13 @@ int main(void)
                 lightDarkBool ? GuiLoadStyleBluish() : GuiLoadStyleCyber();
             }
             GuiGroupBox((Rectangle){120, 150, 400, 200}, "Working Process");
-            DrawText("P5", 310, 235, 20, PURPLE);
+            DrawText(workingList, 310, 235, 20, PURPLE);
             GuiGroupBox((Rectangle){120, 400, 400, 300}, "Done Processes");
-            GuiListView((Rectangle){120, 420, 400, 300}, "P0;P1;P2;P3;P4", &listViewScrollIndex, &listViewActive);
+            GuiListView((Rectangle){120, 420, 400, 300}, doneList, &listViewScrollIndex, &listViewActive);
             GuiGroupBox((Rectangle){screenWidth - 550, 150, 400, 300}, "RDY Queue");
-            GuiListView((Rectangle){screenWidth - 550, 150 + 20, 400, 300}, "P6;P7;P8;P9;P10", &listViewScrollIndex2, &listViewActive2);
+            GuiListView((Rectangle){screenWidth - 550, 150 + 20, 400, 300}, rdyList, &listViewScrollIndex2, &listViewActive2);
             GuiGroupBox((Rectangle){screenWidth - 550, 500, 400, 200}, "Memory");
-            DrawText("25 MB Free", screenWidth - 550 + 150, 590, 20, RED);
+            DrawText("MEM WIP", screenWidth - 550 + 150, 590, 20, RED);
             if (GuiButton((Rectangle){screenWidth - 300, screenHeight - 50, 100, 40}, "Open Debug Stats"))
             {
                 pageShifter = 3;
