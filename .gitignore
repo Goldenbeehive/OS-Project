@@ -4,3 +4,8 @@ process_generator.o
 test.c
 *.out
 *.o
+test.c
+test
+minHeap.h
+processtesting.c
+processtesting

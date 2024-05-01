@@ -9,6 +9,11 @@
 int shmid;
 
 /* Clear the resources before exit */
+/**
+ * @brief  Clear the resources before exit
+ * 
+ * @param signum  The signal number
+ */
 void cleanup(int signum)
 {
     shmctl(shmid, IPC_RMID, NULL);

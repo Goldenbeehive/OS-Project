@@ -2,13 +2,13 @@
 #include "RoundRobin.h"
 int numOfProcesses = 0;
 struct process* processQueue = NULL;
-int msgid,SendQueueID,ReceiveQueueID;
+int ReadyQueueID,SendQueueID,ReceiveQueueID;
 
 void clearResources(int);
 
 int main(int argc, char * argv[])
 {
-    signal(SIGINT, clearResources);
+    //Read the file
     FILE* f = fopen("processes.txt","r");
     if (f == NULL){
         perror("Error opening file");
@@ -18,7 +18,7 @@ int main(int argc, char * argv[])
     numOfProcesses = getnoOfProcesses(f);
     skipLine(f);
     int SchedAlgo,RR_Quantum = 0,i = 0;
-    printf("Enter the scheduling algorithm you want: (1 for Round Robin, 2 for xxxx, 3 for xxxx) ");
+    printf("Enter the scheduling algorithm you want: (1 for Round Robin, 2 for SRTN, 3 for HPF) "); //Choose the algorithm
     scanf("%d", &SchedAlgo);
     if (SchedAlgo == 1){
         while (RR_Quantum <= 0){
@@ -26,18 +26,20 @@ int main(int argc, char * argv[])
             scanf("%d",&RR_Quantum);
         }
     }
+    //Initialize the process queue
     processQueue = (struct process*)malloc(numOfProcesses * sizeof(struct process));
     char line[MAX_SIZE]; 
+    //Read the processes from the file
     while (fgets(line, sizeof(line), f) != NULL){
         int ID,AT,RunningTime,PRI;//,MEMSISZE;
         sscanf(line,"%d %d %d %d", &ID,&AT,&RunningTime,&PRI);               //,&MEMSIZE);
         processQueue[i++] = initializeProcess(ID,AT,RunningTime,PRI);    //,MEMSIZE)
-        testerfunction(&processQueue[i-1]);
+        //testerfunction(&processQueue[i-1]);
     }
     fclose(f);
     i = 0;
-    char* SchedParam[4];
-    switch (SchedAlgo){
+    char* SchedParam[4]; //Array to hold the parameters of the scheduler
+    switch (SchedAlgo){ //Choose the scheduling algorithm
         case 1:
             SchedParam[0] = "1";
             break;
@@ -52,66 +54,48 @@ int main(int argc, char * argv[])
             return -1;
             break;
     }
-    char numOfProc[10];
+    //Convert the number of processes to string
+    char numOfProc[10]; 
     sprintf(numOfProc,"%d",numOfProcesses);
     SchedParam[1] = numOfProc;
+    //Convert the Round Robin Quantum to string
     char RRQuantum[10];
     if(RR_Quantum == 0){ SchedParam[2] = "0"; }
     else{sprintf(RRQuantum,"%d",RR_Quantum); SchedParam[2] = RRQuantum;}
     SchedParam[3] = NULL;
+    //Fork the clock process
     pid_t Clock = fork();
     char* args[] = {"./clk.out",NULL};
     if (Clock == 0){ execv(args[0],args); }
     initClk();
+    //Fork the scheduler process
     pid_t Scheduler = fork();
     if (Scheduler == 0){ execv("./scheduler.out",SchedParam); }
-    key_t key = ftok("Funnyman", 'A');
-    msgid = msgget(key, 0666 | IPC_CREAT);
-    printf("Number of processes = %d\n",numOfProcesses);
-
-    //Initialize Send queue to send turn to process
-    key_t SendQueueKey;
-    SendQueueKey= ftok("Sendman",'A');
-    SendQueueID = msgget(SendQueueKey, 0666 | IPC_CREAT);
-    printf("Send Queue ID: %d\n",SendQueueID);
-    if (SendQueueID == -1)
-    {
-        perror("Error in create message queue");
-        exit(-1);
-    }
-    //Initialize Receive queue to receive remaining time from process
-    key_t ReceiveQueueKey;
-    ReceiveQueueKey= ftok("Receiveman",'A');
-    ReceiveQueueID = msgget(ReceiveQueueKey, 0666 | IPC_CREAT);
-    printf("Ready Queue ID: %d\n",ReceiveQueueID);
-    if (ReceiveQueueID == -1)
-    {
-        perror("Error in create message queue");
-        exit(-1);
-    }
-    while (i < numOfProcesses){
+    DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
+    while (i < numOfProcesses){ //Send the processes to the scheduler according to their arrival time
         if (getClk() == processQueue[i].arrivaltime){
             struct process temp = processQueue[i];
-            msgsnd(msgid, &temp, sizeof(temp),IPC_NOWAIT);
+            msgsnd(ReadyQueueID, &temp, sizeof(temp),IPC_NOWAIT); //Send the process to the scheduler
             //printf("Process %d sent to scheduler at time = %d\n",processQueue[i].id,processQueue[i].arrivaltime);
             i++;
         }
     }
-    
-    signal(SIGCHLD,clearResources);
+    //Wait for the scheduler to finish
     signal(SIGINT,clearResources);
-    waitpid(Clock,NULL,0);
-    msgctl(msgid, IPC_RMID,NULL);
+    waitpid(Scheduler,NULL,0);
     destroyClk(true);
     return 0;
 }
 
+/**
+ * @brief  Clear the resources used by the process generator
+ * 
+ * @param signum  The signal number
+/*/
 void clearResources(int signum)
 {
-    //TODO Clears all resources in case of interruption
     free(processQueue);
-    msgctl(msgid, IPC_RMID,NULL);
+    msgctl(ReadyQueueID, IPC_RMID,NULL);
     msgctl(SendQueueID, IPC_RMID,NULL);
     msgctl(ReceiveQueueID, IPC_RMID,NULL);
-    destroyClk(true);
 }
