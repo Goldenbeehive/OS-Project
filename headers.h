@@ -18,6 +18,8 @@ typedef short bool;
 #define true 1
 #define false 0
 
+#define IGNORE_LENGTH 128
+#define MAX_SIZE 1024
 #define SHKEY 300
 
 
@@ -72,6 +74,7 @@ void destroyClk(bool terminateAll)
 struct process
 {
     int id;
+    pid_t pid;
     int arrivaltime;
     int runningtime;
     int priority;
@@ -85,6 +88,15 @@ struct process
     int lasttime;
     int flag;
 };
+struct msg
+{
+    struct process * proc; 
+};
+struct msgbuff
+{
+    long mtype;
+    int msg;
+};
 /**
  * @brief Function to initialize a process pointer given its data
  * 
@@ -92,32 +104,110 @@ struct process
  * @param arrivaltime Arrival time that was set by the process generator
  * @param runningtime The time the process needs to run
  * @param priority Takes a priority value between 1 and 10, 1 being the highest priority and 10 being the lowest
- * @param starttime The time the process started running for the first time
- * @param endtime The time when the process finishes its running time
- * @param remainingtime The time remaining for the process to finish incase of pre-emption
- * @param waitingtime A calculated value for the time the process spent waiting in the ready queue
- * @param responsetime Difference between the time the process started and the time it was first scheduled
- * @param turnaroundtime Time take for the process to finish from the time it was created
- * @param isFinished Flag for the process to indicate if it has finished running
- * @param isRunning Flag for the process to indicate if it is currently running
- * @param isStarted Flag for the process to indicate if it has started running
+ * @param memsize The memory that the process needs.
  * @return struct process* returns a pointer to the process created
  */
-struct process* initializeProcess(int id, int arrivaltime, int runningtime, int priority, int starttime, int endtime, int remainingtime, int waitingtime, int responsetime, int turnaroundtime, int isFinished, int isRunning, int isStarted) {
-    struct process* p = malloc(sizeof(struct process));
-    p->id = id;
-    p->arrivaltime = arrivaltime;
-    p->runningtime = runningtime; // Corrected bursttime assignment
-    p->priority = priority;
-    p->starttime = starttime;
-    p->endtime = endtime;
-    p->remainingtime = remainingtime;
-    p->waittime = waitingtime; // Added assignment for waittime
-    p->responsetime = responsetime;
-    p->turnaroundtime = turnaroundtime;
-    p->flag = isFinished; // Renamed isFinished for consistency
-    p->lasttime = isRunning; // Added assignment for lasttime
-    p->flag = isStarted; // Added assignment for flag
+struct process initializeProcess(int id, int arrivaltime, int runningtime, int priority) {
+    struct process p;
+    p.id = id;
+    p.arrivaltime = arrivaltime;
+    p.runningtime = runningtime; // Corrected bursttime assignment
+    p.priority = priority;
+    p.remainingtime = runningtime;
     return p;
 }
+
+void testerfunction(struct process* p){
+    printf("%d %d %d %d %d",p->id,p->arrivaltime,p->runningtime,p->remainingtime,p->priority);
+    printf("\n");
+}
+
+/**
+ * @brief Skips the first line of the file
+ * 
+ * @param f  The file pointer to the file you want to read from
+ */
+void skipLine(FILE* f){
+    char ignore[IGNORE_LENGTH];
+    fgets(ignore,IGNORE_LENGTH,f);
+}
+
+/**
+ * @brief Gets the number of processes in the file
+ * 
+ * @param f The file pointer to the file you want to read from
+ * @return int The number of processes in the file
+ */
+int getnoOfProcesses(FILE* f){
+    int c;
+    int count = 0;
+    while ((c = fgetc(f)) != EOF) { if (c == '\n') { count++; } }
+    fseek(f,0,SEEK_SET);
+    return count;
+}
+
+/**
+ * @brief  Define the keys for the message queues
+ * 
+ * @param ReadyQueueID  The ID of the Ready Queue
+ * @param SendQueueID  The ID of the Send Queue
+ * @param ReceiveQueueID  The ID of the Receive Queue
+ */
+void DefineKeys(int* ReadyQueueID, int* SendQueueID, int* ReceiveQueueID){
+    key_t ReadyQueueKey;
+    ReadyQueueKey= ftok("keys/Funnyman",'A');
+    *ReadyQueueID = msgget(ReadyQueueKey, 0666 | IPC_CREAT);
+    if (*ReadyQueueID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+    //Initialize Send queue to send turn to process
+    key_t SendQueueKey;
+    SendQueueKey= ftok("keys/Sendman",'A');
+    *SendQueueID = msgget(SendQueueKey, 0666 | IPC_CREAT);
+    if (*SendQueueID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+    //Initialize Receive queue to receive remaining time from process
+    key_t ReceiveQueueKey;
+    ReceiveQueueKey= ftok("keys/Receiveman",'A');
+    *ReceiveQueueID = msgget(ReceiveQueueKey, 0666 | IPC_CREAT);
+    if (*ReceiveQueueID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+}
+/**
+ * @brief  Define the keys for the message queues
+ * 
+ * @param SendQueueID  The ID of the Send Queue 
+ * @param ReceiveQueueID  The ID of the Receive Queue
+ */
+void DefineKeysProcess(int* SendQueueID, int* ReceiveQueueID){
+
+    //Initialize Send queue to send turn to process
+    key_t SendQueueKey;
+    SendQueueKey= ftok("keys/Sendman",'A');
+    *SendQueueID = msgget(SendQueueKey, 0666 | IPC_CREAT);
+    if (*SendQueueID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+    //Initialize Receive queue to receive remaining time from process
+    key_t ReceiveQueueKey;
+    ReceiveQueueKey= ftok("keys/Receiveman",'A');
+    *ReceiveQueueID = msgget(ReceiveQueueKey, 0666 | IPC_CREAT);
+    if (*ReceiveQueueID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+}
+
+
 #endif // HEADERS_H
