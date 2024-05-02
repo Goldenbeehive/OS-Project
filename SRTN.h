@@ -40,7 +40,7 @@ void LogStartedSRTN(struct process *proc)
     if (proc->remainingtime != proc->runningtime)
     {
         fprintf(filePointer, "At time %d, process %d Resumed. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
-                clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime);
+                clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime-proc->runningtime+proc->remainingtime);
     }
     else
     {
@@ -77,13 +77,13 @@ void LogFinishedSRTN(struct process *proc, int noOfProcesses)
     {
 
         fprintf(filePointer, "At time %d, process %d Finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
-                clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime - proc->runningtime, clock - proc->arrivaltime, (float)clock - proc->arrivaltime / (float)noOfProcesses);
+                clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime - proc->runningtime, clock - proc->arrivaltime, ((float)clock - proc->arrivaltime) / (float)proc->runningtime);
 
     }
     else
     {
         fprintf(filePointer, "At time %d, process %d Stopped. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
-                clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime);
+                clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime-proc->runningtime+proc->remainingtime);
     }
     fclose(filePointer);
 }

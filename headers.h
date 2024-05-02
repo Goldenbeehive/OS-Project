@@ -114,6 +114,7 @@ struct process initializeProcess(int id, int arrivaltime, int runningtime, int p
     p.runningtime = runningtime; // Corrected bursttime assignment
     p.priority = priority;
     p.remainingtime = runningtime;
+    p.flag = 0;
     return p;
 }
 
@@ -208,6 +209,7 @@ void DefineKeysProcess(int* SendQueueID, int* ReceiveQueueID){
         exit(-1);
     }
 }
+
 
 
 #endif // HEADERS_H

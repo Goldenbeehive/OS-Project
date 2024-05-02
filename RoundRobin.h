@@ -39,7 +39,7 @@ void LogStartedRR(struct process proc)
     if (proc.remainingtime != proc.runningtime)
     {
         fprintf(filePointer, "At time %d, process %d Resumed. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
-                clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime);
+                clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime- proc.runningtime+proc.remainingtime);
     }
     else
     {
@@ -72,12 +72,12 @@ void LogFinishedRR(struct process proc, int noOfProcesses)
     {
 
         fprintf(filePointer, "At time %d, process %d Finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
-                clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime - proc.runningtime, clock - proc.arrivaltime, (float)clock - proc.arrivaltime / (float)noOfProcesses);
+                clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime - proc.runningtime, clock - proc.arrivaltime, ((float)clock - proc.arrivaltime) / (float)proc.runningtime);
     }
     else
     {
         fprintf(filePointer, "At time %d, process %d Stopped. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
-                clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime);
+                clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime- proc.runningtime+proc.remainingtime);
     }
     fclose(filePointer);
 }
@@ -108,6 +108,7 @@ void RoundRobin(int quantum, int processCount)
         {
             struct process rec;
             // Checks for processes arriving from the process generator
+            printf("Checking for new processes\n");
             int received = msgrcv(ReadyQueueID, &rec, sizeof(rec), 0, IPC_NOWAIT);
             if (received != -1)
             {
@@ -163,7 +164,7 @@ void RoundRobin(int quantum, int processCount)
                     displayList(Running_List);
                     remainingProcesses--;
                     quantumCounter = 0;
-                    LogStartedRR(Running_List->current->data);
+                    //LogStartedRR(Running_List->current->data);
                     wait(NULL);
                 }
             }
@@ -173,14 +174,16 @@ void RoundRobin(int quantum, int processCount)
                 // printf("Quantum has finished\n");
                 quantumCounter = 0;
                 struct process temp = Running_List->current->data;
+                Running_List->current->data.flag = 0;
                 changeCurrent(Running_List);
                 struct process newCurrent = Running_List->current->data;
                 if (temp.id != newCurrent.id)
                 {
 
                     LogFinishedRR(temp, processCount);
-                    LogStartedRR(newCurrent);
+                    //LogStartedRR(newCurrent);
                 }
+                else{Running_List->current->data.flag = 1;}
             }
             struct msgbuff sendmsg;
             // Check to handle the last process in the list
@@ -197,7 +200,18 @@ void RoundRobin(int quantum, int processCount)
                 perror("Error in send message");
                 exit(-1);
             }
-        
+            struct process currentProcess;
+            getCurrent(Running_List, &currentProcess);
+            if(currentProcess.flag == 0){
+                currentProcess.flag = 1;
+                changeCurrentData(Running_List, currentProcess);
+                LogStartedRR(currentProcess);
+            }
+            if(HasStartedArray[currentProcess.id] == 0){
+                HasStartedArray[currentProcess.id] = 1;
+                currentProcess.starttime =clk;
+                changeCurrentData(Running_List, currentProcess);
+            }
             quantumCounter++;
         }
         // Waits till the next clock cycle
