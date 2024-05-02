@@ -78,7 +78,10 @@ int main(void)
     GuiWindowFileDialogState fileDialogState = InitGuiWindowFileDialog(GetWorkingDirectory());
     bool rrError = false;
     bool txtError = false;
+    bool testgenError = false;
+    bool genfile=false;
     char rrQuantum[100] = "";
+    char ProcessCount[100] = "";
     /*Simulation Page Variables*/
     int listViewScrollIndex = 0;
     int listViewActive = -1;
@@ -187,11 +190,24 @@ int main(void)
             }
             if (algoChoice == 0)
             {
+                Rectangle rrRect = {730, 180, 500, 60};
                 GuiLabel((Rectangle){730, 130, 500, 60}, "Enter Quantum:");
-                GuiTextBox((Rectangle){730, 180, 500, 60}, rrQuantum, 20, true);
+                GuiTextBox(rrRect, rrQuantum, 20, (CheckCollisionPointRec(GetMousePosition(), rrRect) ? true : false));
                 if (rrError)
                 {
                     DrawText("Please enter a valid quantum.", 730, 280, 30, RED);
+                }
+            }
+            if(GuiCheckBox((Rectangle){30, 300, 20, 20}, "Test Generator", NULL)){
+                genfile = !genfile;
+            }
+            if(genfile){
+                Rectangle NumRect = {30, 400, 500, 60};
+                GuiLabel((Rectangle){30, 350, 500, 60}, "Enter Number of Processes:");
+                GuiTextBox(NumRect, ProcessCount, 20, (CheckCollisionPointRec(GetMousePosition(), NumRect) ? true : false));
+                if (testgenError)
+                {
+                    DrawText("Please enter a valid number of processes.", 30, 500, 30, RED);
                 }
             }
             GuiSetStyle(DEFAULT, TEXT_SIZE, 80);
@@ -200,6 +216,7 @@ int main(void)
             strcat(fileText, "/");
             strcat(fileText, fileDialogState.fileNameText);
             GuiLabel((Rectangle){30, 500, screenWidth, 120}, "Choose your process text file:");
+            
             GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
             if (txtError)
             {
@@ -214,6 +231,7 @@ int main(void)
             {
                 txtError = false;
                 rrError = false;
+                testgenError = false;
                 if (strstr(fileDialogState.fileNameText, ".txt") == NULL)
                 {
                     txtError = true;
@@ -225,6 +243,10 @@ int main(void)
                         rrError = true;
                     }
                 }
+                if (!isInteger(ProcessCount) || ProcessCount[0] == '\0')
+                    {
+                        testgenError = true;
+                    }
                 if (!txtError && !rrError)
                 {
                     char algoChoicestr[5];
@@ -237,6 +259,27 @@ int main(void)
                     }
                     pageShifter = 2;
                 }
+                if (txtError && !rrError && !testgenError)
+                {
+                    char *args_test[] = {"./test_generator.out", ProcessCount, NULL};
+                    pid_t TestGen = fork();
+                    if (TestGen == 0)
+                    {
+                        execv(args_test[0], args_test);
+                    }
+                    waitpid(TestGen, NULL, 0);
+
+                    char algoChoicestr[5];
+                    sprintf(algoChoicestr, "%d", algoChoice + 1);
+                    char *args[] = {"./process_generator.out", "processes.txt", algoChoicestr, rrQuantum, NULL};
+                    pid_t ProcessGen = fork();
+                    if (ProcessGen == 0)
+                    {
+                        execv(args[0], args);
+                    }
+                    pageShifter = 2;
+                }
+                
             }
 
             GuiUnlock();
