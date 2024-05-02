@@ -1,5 +1,6 @@
 #include "MinHeap.h"
 #include "headers.h"
+#include "time.h"
 /**
  * @brief Clears the contents of the log file named "scheduler.log"
  *
@@ -54,7 +55,7 @@ void LogFinished(struct process proc, int noOfProcesses, int *runningTimeSum, fl
         printf("Unable to open scheduler.log.\n");
         return;
     }
-    fprintf(filePointer, "At time %d, process %d Finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
+    fprintf(filePointer, "At time %d, process %d finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
             clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime - proc.runningtime, clock - proc.arrivaltime, ((float)clock - proc.arrivaltime) / (float)proc.runningtime);
     *runningTimeSum += proc.runningtime;
     *WTASum += ((float)clock - proc.arrivaltime) / (float)proc.runningtime;
@@ -75,6 +76,10 @@ void LogFinished(struct process proc, int noOfProcesses, int *runningTimeSum, fl
 bool ReceiveProcessHPF(struct MinHeap *minHeap, int ReadyQueueID)
 {
     struct process ArrivedProcess;
+    struct timespec req;
+    req.tv_sec = 0;
+    req.tv_nsec = 1;  
+    nanosleep(&req, NULL);
     int received = msgrcv(ReadyQueueID, &ArrivedProcess, sizeof(ArrivedProcess), 0, IPC_NOWAIT);
     if (received != -1)
     {
@@ -130,6 +135,10 @@ void HPF(int noOfProcesses)
                 LogStarted(currentProcess);
             }
             struct msgbuff receivedmsg;
+            struct timespec req;
+            req.tv_sec = 0;
+            req.tv_nsec = 1; 
+            nanosleep(&req, NULL);
             int received = msgrcv(ReceiveQueueID, &receivedmsg, sizeof(receivedmsg.msg), 0, IPC_NOWAIT);
             if (received != -1)
             {

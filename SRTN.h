@@ -1,6 +1,7 @@
 #include "MinHeap.h"
 #include "headers.h"
 #include <math.h>
+#include "time.h"
 /**
  * @brief Clears the contents of the log file named "scheduler.log"
  *
@@ -40,7 +41,7 @@ void LogStartedSRTN(struct process *proc)
     }
     if (proc->remainingtime != proc->runningtime)
     {
-        fprintf(filePointer, "At time %d, process %d Resumed. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
+        fprintf(filePointer, "At time %d, process %d resumed. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
                 clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime - proc->runningtime + proc->remainingtime);
     }
     else
@@ -77,7 +78,7 @@ void LogFinishedSRTN(struct process *proc, int noOfProcesses, int *runningTimeSu
     if (proc->remainingtime == 0)
     {
 
-        fprintf(filePointer, "At time %d, process %d Finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
+        fprintf(filePointer, "At time %d, process %d finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
                 clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime - proc->runningtime, clock - proc->arrivaltime, ((float)clock - proc->arrivaltime) / (float)proc->runningtime);
         *runningTimeSum += proc->runningtime;
         *WTASum += ((float)clock - proc->arrivaltime) / (float)proc->runningtime;
@@ -87,7 +88,7 @@ void LogFinishedSRTN(struct process *proc, int noOfProcesses, int *runningTimeSu
     }
     else
     {
-        fprintf(filePointer, "At time %d, process %d Stopped. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
+        fprintf(filePointer, "At time %d, process %d stopped. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
                 clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime - proc->runningtime + proc->remainingtime);
     }
     fclose(filePointer);
@@ -170,6 +171,10 @@ void SRTN(int noOfProcesses)
             }
 
             struct msgbuff receivedmsg;
+            struct timespec req;
+            req.tv_sec = 0;
+            req.tv_nsec = 1;  
+            nanosleep(&req, NULL);
             int received = msgrcv(ReceiveQueueID, &receivedmsg, sizeof(receivedmsg.msg), 0, IPC_NOWAIT);
             if (received != -1)
             {
@@ -206,7 +211,7 @@ void SRTN(int noOfProcesses)
     }
     FILE *perf;
     perf = fopen("scheduler.perf", "w");
-    printf("%i",runningTimeSum);
+    printf("%i", runningTimeSum);
     float CPUUtilization = (float)runningTimeSum / clk * 100;
     fprintf(perf, "CPU Utilization =  %.2f %% \n", CPUUtilization);
     float AVGWTA = (float)WTASum / (float)noOfProcesses;
@@ -217,7 +222,7 @@ void SRTN(int noOfProcesses)
     {
         counter += (TAArray[i] - AVGWTA) * (TAArray[i] - AVGWTA);
     }
-   
+
     counter = counter / noOfProcesses;
     counter = sqrt(counter);
     fprintf(perf, "Std WTA = %.2f \n", counter);

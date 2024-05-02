@@ -3,6 +3,7 @@
 #include "headers.h"
 #include "CircularList.h"
 #include <math.h>
+#include"time.h"
 /**
  * @brief Clears the contents of the log file named "scheduler.log"
  *
@@ -39,7 +40,7 @@ void LogStartedRR(struct process proc)
     }
     if (proc.remainingtime != proc.runningtime)
     {
-        fprintf(filePointer, "At time %d, process %d Resumed. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
+        fprintf(filePointer, "At time %d, process %d resumed. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
                 clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime - proc.runningtime + proc.remainingtime);
     }
     else
@@ -72,7 +73,7 @@ void LogFinishedRR(struct process proc, int noOfProcesses, int *runningTimeSum, 
     if (proc.remainingtime == 0)
     {
 
-        fprintf(filePointer, "At time %d, process %d Finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
+        fprintf(filePointer, "At time %d, process %d finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
                 clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime - proc.runningtime, clock - proc.arrivaltime, ((float)clock - proc.arrivaltime) / (float)proc.runningtime);
         *runningTimeSum += proc.runningtime;
         *WTASum += ((float)clock - proc.arrivaltime) / (float)proc.runningtime;
@@ -82,7 +83,7 @@ void LogFinishedRR(struct process proc, int noOfProcesses, int *runningTimeSum, 
     }
     else
     {
-        fprintf(filePointer, "At time %d, process %d Stopped. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
+        fprintf(filePointer, "At time %d, process %d stopped. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
                 clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime - proc.runningtime + proc.remainingtime);
     }
     fclose(filePointer);
@@ -121,6 +122,10 @@ void RoundRobin(int quantum, int processCount)
             struct process rec;
             // Checks for processes arriving from the process generator
             printf("Checking for new processes\n");
+            struct timespec req;
+            req.tv_sec = 0;
+            req.tv_nsec = 1;
+            nanosleep(&req, NULL);
             int received = msgrcv(ReadyQueueID, &rec, sizeof(rec), 0, IPC_NOWAIT);
             if (received != -1)
             {
