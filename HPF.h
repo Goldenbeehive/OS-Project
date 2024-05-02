@@ -117,6 +117,7 @@ void HPF(int noOfProcesses)
     struct MinHeap *minHeap = createMinHeap(noOfProcesses);
     int ReadyQueueID, SendQueueID, ReceiveQueueID;
     DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
+    initSync();
     bool firstarrived = true;
     struct process currentProcess;
     int clk = 0;
@@ -124,6 +125,7 @@ void HPF(int noOfProcesses)
     {
         clk = getClk();
         printf("Current clock = %d\n", clk);
+        while(getSync() == 0);
         while (ReceiveProcessHPF(minHeap, ReadyQueueID))
             ;
         if (minHeap->heap_size > 0)

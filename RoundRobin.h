@@ -102,6 +102,7 @@ void RoundRobin(int quantum, int processCount)
     {
         HasStartedArray[i] = 0;
     }
+        initSync();
     // Initialize Ready queue to receive processes from process generator
     int ReadyQueueID, SendQueueID, ReceiveQueueID;
     DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
@@ -115,6 +116,7 @@ void RoundRobin(int quantum, int processCount)
         clk = getClk();
         // Prints the current cycle
         printf("Current Clk: %d\n", clk);
+        while(getSync() == 0){};
         // Check if there are any new processes
         bool StillArriving = true;
         while (StillArriving)

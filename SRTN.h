@@ -142,6 +142,7 @@ void SRTN(int noOfProcesses)
     struct MinHeap *minHeap = createMinHeap(noOfProcesses);
     int ReadyQueueID, SendQueueID, ReceiveQueueID;
     DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
+    initSync();
     struct process *keeper = NULL;
     int clk = 0;
     while (remainingProcesses > 0)
@@ -150,7 +151,7 @@ void SRTN(int noOfProcesses)
         struct process *currentProcess = NULL, tmp;
 
         printf("Current clock = %d\n", clk);
-
+        while(getSync() == 0){}
         while (ReceiveProcess(minHeap, ReadyQueueID))
             ;
         if (minHeap->heap_size > 0)
