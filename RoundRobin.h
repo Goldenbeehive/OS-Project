@@ -2,6 +2,7 @@
 #define ROUNDROBIN_H
 #include "headers.h"
 #include "CircularList.h"
+#include <math.h>
 /**
  * @brief Clears the contents of the log file named "scheduler.log"
  *
@@ -39,7 +40,7 @@ void LogStartedRR(struct process proc)
     if (proc.remainingtime != proc.runningtime)
     {
         fprintf(filePointer, "At time %d, process %d Resumed. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
-                clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime- proc.runningtime+proc.remainingtime);
+                clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime - proc.runningtime + proc.remainingtime);
     }
     else
     {
@@ -57,7 +58,7 @@ void LogStartedRR(struct process proc)
  * @param noOfProcesses The total number of processes
  * @return void
  */
-void LogFinishedRR(struct process proc, int noOfProcesses)
+void LogFinishedRR(struct process proc, int noOfProcesses, int *runningTimeSum, float *WTASum, int *waitingTimeSum, float TAArray[], int *TAArrayIndex)
 {
 
     int clock = getClk();
@@ -73,11 +74,16 @@ void LogFinishedRR(struct process proc, int noOfProcesses)
 
         fprintf(filePointer, "At time %d, process %d Finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
                 clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime - proc.runningtime, clock - proc.arrivaltime, ((float)clock - proc.arrivaltime) / (float)proc.runningtime);
+        *runningTimeSum += proc.runningtime;
+        *WTASum += ((float)clock - proc.arrivaltime) / (float)proc.runningtime;
+        *waitingTimeSum += clock - proc.arrivaltime - proc.runningtime;
+        TAArray[*TAArrayIndex] = ((float)clock - proc.arrivaltime) / (float)proc.runningtime;
+        *TAArrayIndex = *TAArrayIndex + 1;
     }
     else
     {
         fprintf(filePointer, "At time %d, process %d Stopped. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
-                clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime- proc.runningtime+proc.remainingtime);
+                clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime - proc.runningtime + proc.remainingtime);
     }
     fclose(filePointer);
 }
@@ -85,6 +91,11 @@ void RoundRobin(int quantum, int processCount)
 {
     printf("Round Robin Scheduler\n");
     clearLogFileRR();
+    float TAArray[processCount];
+    int TAArrayIndex = 0;
+    int runningTimeSum = 0;
+    float WTASum = 0.0f;
+    int waitingTimeSum = 0;
     int HasStartedArray[processCount + 1];
     for (int i = 0; i <= processCount; i++)
     {
@@ -96,10 +107,11 @@ void RoundRobin(int quantum, int processCount)
     int quantumCounter = 0;
     int remainingProcesses = processCount;
     struct CircularList *Running_List = createCircularList();
+    int clk = 0;
     // Main processing loop, keeps running until all processes are finished
     while (remainingProcesses > 0)
     {
-        int clk = getClk();
+        clk = getClk();
         // Prints the current cycle
         printf("Current Clk: %d\n", clk);
         // Check if there are any new processes
@@ -158,13 +170,13 @@ void RoundRobin(int quantum, int processCount)
                 {
                     // If the process has finished, remove it from the running list
                     printf("Process with ID: %d has finished\n", p.id);
-                    LogFinishedRR(p, processCount);
+                    LogFinishedRR(p, processCount, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex);
                     struct process Terminated;
                     removeCurrent(Running_List, &Terminated);
                     displayList(Running_List);
                     remainingProcesses--;
                     quantumCounter = 0;
-                    //LogStartedRR(Running_List->current->data);
+                    // LogStartedRR(Running_List->current->data);
                     wait(NULL);
                 }
             }
@@ -180,10 +192,13 @@ void RoundRobin(int quantum, int processCount)
                 if (temp.id != newCurrent.id)
                 {
 
-                    LogFinishedRR(temp, processCount);
-                    //LogStartedRR(newCurrent);
+                    LogFinishedRR(temp, processCount, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex);
+                    // LogStartedRR(newCurrent);
                 }
-                else{Running_List->current->data.flag = 1;}
+                else
+                {
+                    Running_List->current->data.flag = 1;
+                }
             }
             struct msgbuff sendmsg;
             // Check to handle the last process in the list
@@ -202,14 +217,16 @@ void RoundRobin(int quantum, int processCount)
             }
             struct process currentProcess;
             getCurrent(Running_List, &currentProcess);
-            if(currentProcess.flag == 0){
+            if (currentProcess.flag == 0)
+            {
                 currentProcess.flag = 1;
                 changeCurrentData(Running_List, currentProcess);
                 LogStartedRR(currentProcess);
             }
-            if(HasStartedArray[currentProcess.id] == 0){
+            if (HasStartedArray[currentProcess.id] == 0)
+            {
                 HasStartedArray[currentProcess.id] = 1;
-                currentProcess.starttime =clk;
+                currentProcess.starttime = clk;
                 changeCurrentData(Running_List, currentProcess);
             }
             quantumCounter++;
@@ -219,6 +236,24 @@ void RoundRobin(int quantum, int processCount)
         {
         };
     }
+    FILE *perf;
+    perf = fopen("scheduler.perf", "w");
+    printf("%i", runningTimeSum);
+    float CPUUtilization = (float)runningTimeSum / clk * 100;
+    fprintf(perf, "CPU Utilization =  %.2f %% \n", CPUUtilization);
+    float AVGWTA = (float)WTASum / (float)processCount;
+    fprintf(perf, "Avg WTA =  %.2f  \n", AVGWTA);
+    fprintf(perf, "Avg Waiting = %.2f \n", (float)waitingTimeSum / (float)processCount);
+    double counter = 0.0f;
+    for (int i = 0; i < processCount; i++)
+    {
+        counter += (TAArray[i] - AVGWTA) * (TAArray[i] - AVGWTA);
+    }
+
+    counter = counter / processCount;
+    counter = sqrt(counter);
+    fprintf(perf, "Std WTA = %.2f \n", counter);
+    fclose(perf);
     destroyList(Running_List);
 }
 #endif

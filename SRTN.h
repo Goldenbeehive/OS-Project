@@ -1,5 +1,6 @@
 #include "MinHeap.h"
 #include "headers.h"
+#include <math.h>
 /**
  * @brief Clears the contents of the log file named "scheduler.log"
  *
@@ -40,7 +41,7 @@ void LogStartedSRTN(struct process *proc)
     if (proc->remainingtime != proc->runningtime)
     {
         fprintf(filePointer, "At time %d, process %d Resumed. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
-                clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime-proc->runningtime+proc->remainingtime);
+                clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime - proc->runningtime + proc->remainingtime);
     }
     else
     {
@@ -58,7 +59,7 @@ void LogStartedSRTN(struct process *proc)
  * @param noOfProcesses The total number of processes
  * @return void
  */
-void LogFinishedSRTN(struct process *proc, int noOfProcesses)
+void LogFinishedSRTN(struct process *proc, int noOfProcesses, int *runningTimeSum, float *WTASum, int *waitingTimeSum, float TAArray[], int *TAArrayIndex)
 {
     if (proc == NULL)
     {
@@ -78,12 +79,16 @@ void LogFinishedSRTN(struct process *proc, int noOfProcesses)
 
         fprintf(filePointer, "At time %d, process %d Finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
                 clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime - proc->runningtime, clock - proc->arrivaltime, ((float)clock - proc->arrivaltime) / (float)proc->runningtime);
-
+        *runningTimeSum += proc->runningtime;
+        *WTASum += ((float)clock - proc->arrivaltime) / (float)proc->runningtime;
+        *waitingTimeSum += clock - proc->arrivaltime - proc->runningtime;
+        TAArray[*TAArrayIndex] = ((float)clock - proc->arrivaltime) / (float)proc->runningtime;
+        *TAArrayIndex = *TAArrayIndex + 1;
     }
     else
     {
         fprintf(filePointer, "At time %d, process %d Stopped. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
-                clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime-proc->runningtime+proc->remainingtime);
+                clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime - proc->runningtime + proc->remainingtime);
     }
     fclose(filePointer);
 }
@@ -126,18 +131,21 @@ bool ReceiveProcess(struct MinHeap *minHeap, int ReadyQueueID)
 void SRTN(int noOfProcesses)
 {
     printf("STRN Running\n");
-    int nonIdle = 0;
-    int sumTA = 0;
-    int waiting = 0;
+    float TAArray[noOfProcesses];
+    int TAArrayIndex = 0;
+    int runningTimeSum = 0;
+    float WTASum = 0.0f;
+    int waitingTimeSum = 0;
     clearLogFileSRTN();
     int remainingProcesses = noOfProcesses;
     struct MinHeap *minHeap = createMinHeap(noOfProcesses);
     int ReadyQueueID, SendQueueID, ReceiveQueueID;
     DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
     struct process *keeper = NULL;
+    int clk = 0;
     while (remainingProcesses > 0)
     {
-        int clk = getClk();
+        clk = getClk();
         struct process *currentProcess = NULL, tmp;
 
         printf("Current clock = %d\n", clk);
@@ -156,7 +164,7 @@ void SRTN(int noOfProcesses)
             }
             if (keeper != NULL && keeper->id != currentProcess->id)
             {
-                LogFinishedSRTN(keeper, noOfProcesses);
+                LogFinishedSRTN(keeper, noOfProcesses, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex);
                 LogStartedSRTN(currentProcess);
                 *keeper = *currentProcess;
             }
@@ -171,7 +179,7 @@ void SRTN(int noOfProcesses)
             if (currentProcess->remainingtime == 0)
             {
                 printf("Process with ID: %d has finished\n", currentProcess->id);
-                LogFinishedSRTN(currentProcess, noOfProcesses);
+                LogFinishedSRTN(currentProcess, noOfProcesses, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex);
                 struct process Terminated = extractMin(minHeap, 1);
                 remainingProcesses--;
                 wait(NULL);
@@ -196,6 +204,24 @@ void SRTN(int noOfProcesses)
         while (clk == getClk())
             ;
     }
+    FILE *perf;
+    perf = fopen("scheduler.perf", "w");
+    printf("%i",runningTimeSum);
+    float CPUUtilization = (float)runningTimeSum / clk * 100;
+    fprintf(perf, "CPU Utilization =  %.2f %% \n", CPUUtilization);
+    float AVGWTA = (float)WTASum / (float)noOfProcesses;
+    fprintf(perf, "Avg WTA =  %.2f  \n", AVGWTA);
+    fprintf(perf, "Avg Waiting = %.2f \n", (float)waitingTimeSum / (float)noOfProcesses);
+    double counter = 0.0f;
+    for (int i = 0; i < noOfProcesses; i++)
+    {
+        counter += (TAArray[i] - AVGWTA) * (TAArray[i] - AVGWTA);
+    }
+   
+    counter = counter / noOfProcesses;
+    counter = sqrt(counter);
+    fprintf(perf, "Std WTA = %.2f \n", counter);
+    fclose(perf);
     free(keeper);
     destroy(minHeap);
 }

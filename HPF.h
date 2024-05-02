@@ -44,7 +44,7 @@ void LogStarted(struct process proc)
  * @param noOfProcesses The total number of processes
  * @return void
  */
-void LogFinished(struct process proc, int noOfProcesses)
+void LogFinished(struct process proc, int noOfProcesses, int *runningTimeSum, float *WTASum, int *waitingTimeSum, float TAArray[], int *TAArrayIndex)
 {
     int clock = getClk();
     FILE *filePointer;
@@ -56,6 +56,11 @@ void LogFinished(struct process proc, int noOfProcesses)
     }
     fprintf(filePointer, "At time %d, process %d Finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
             clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime - proc.runningtime, clock - proc.arrivaltime, ((float)clock - proc.arrivaltime) / (float)proc.runningtime);
+    *runningTimeSum += proc.runningtime;
+    *WTASum += ((float)clock - proc.arrivaltime) / (float)proc.runningtime;
+    *waitingTimeSum += clock - proc.arrivaltime - proc.runningtime;
+    TAArray[*TAArrayIndex] = ((float)clock - proc.arrivaltime) / (float)proc.runningtime;
+    *TAArrayIndex = *TAArrayIndex + 1;
     fclose(filePointer);
 }
 
@@ -98,16 +103,21 @@ void HPF(int noOfProcesses)
 {
     printf("HPF Running");
     clearLogFile();
+    float TAArray[noOfProcesses];
+    int TAArrayIndex = 0;
+    int runningTimeSum = 0;
+    float WTASum = 0.0f;
+    int waitingTimeSum = 0;
     int remainingProcesses = noOfProcesses;
     struct MinHeap *minHeap = createMinHeap(noOfProcesses);
     int ReadyQueueID, SendQueueID, ReceiveQueueID;
     DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
     bool firstarrived = true;
     struct process currentProcess;
-
+    int clk = 0;
     while (remainingProcesses > 0)
     {
-        int clk = getClk();
+        clk = getClk();
         printf("Current clock = %d\n", clk);
         while (ReceiveProcessHPF(minHeap, ReadyQueueID))
             ;
@@ -128,7 +138,7 @@ void HPF(int noOfProcesses)
             if (currentProcess.remainingtime == 0)
             {
                 printf("Process with ID: %d has finished\n", currentProcess.id);
-                LogFinished(currentProcess, noOfProcesses);
+                LogFinished(currentProcess, noOfProcesses, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex);
                 Remove(minHeap, currentProcess);
                 struct process Terminated = currentProcess;
                 remainingProcesses--;
@@ -154,5 +164,23 @@ void HPF(int noOfProcesses)
         while (clk == getClk())
             ;
     }
+    FILE *perf;
+    perf = fopen("scheduler.perf", "w");
+    printf("%i", runningTimeSum);
+    float CPUUtilization = (float)runningTimeSum / clk * 100;
+    fprintf(perf, "CPU Utilization =  %.2f %% \n", CPUUtilization);
+    float AVGWTA = (float)WTASum / (float)noOfProcesses;
+    fprintf(perf, "Avg WTA =  %.2f  \n", AVGWTA);
+    fprintf(perf, "Avg Waiting = %.2f \n", (float)waitingTimeSum / (float)noOfProcesses);
+    double counter = 0.0f;
+    for (int i = 0; i < noOfProcesses; i++)
+    {
+        counter += (TAArray[i] - AVGWTA) * (TAArray[i] - AVGWTA);
+    }
+
+    counter = counter / noOfProcesses;
+    counter = sqrt(counter);
+    fprintf(perf, "Std WTA = %.2f \n", counter);
+    fclose(perf);
     destroy(minHeap);
 }
