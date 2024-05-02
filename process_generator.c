@@ -8,6 +8,7 @@ void clearResources(int);
 
 int main(int argc, char * argv[])
 {
+    signal(SIGINT,clearResources);
     if (argc != 4){
         perror("Invalid number of arguments");
         return -1;
@@ -75,20 +76,25 @@ int main(int argc, char * argv[])
     char* args[] = {"./clk.out",NULL};
     if (Clock == 0){ execv(args[0],args); }
     initClk();
+    initSync();
+    *Synchro=0;
     //Fork the scheduler process
     pid_t Scheduler = fork();
     if (Scheduler == 0){ execv("./scheduler.out",SchedParam); }
     DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
     while (i < numOfProcesses){ //Send the processes to the scheduler according to their arrival time
+        setSync(0);
         if (getClk() == processQueue[i].arrivaltime){
             struct process temp = processQueue[i];
             msgsnd(ReadyQueueID, &temp, sizeof(temp),IPC_NOWAIT); //Send the process to the scheduler
             //printf("Process %d sent to scheduler at time = %d\n",processQueue[i].id,processQueue[i].arrivaltime);
             i++;
         }
+        else{ setSync(1); }
     }
+    setSync(1);
     //Wait for the scheduler to finish
-    signal(SIGINT,clearResources);
+    
     waitpid(Scheduler,NULL,0);
     destroyClk(true);
     return 0;
@@ -102,6 +108,7 @@ int main(int argc, char * argv[])
 void clearResources(int signum)
 {
     free(processQueue);
+    destroySync(true);
     msgctl(ReadyQueueID, IPC_RMID,NULL);
     msgctl(SendQueueID, IPC_RMID,NULL);
     msgctl(ReceiveQueueID, IPC_RMID,NULL);
