@@ -58,7 +58,7 @@ void LogStartedSRTN(struct process *proc)
  * @param noOfProcesses The total number of processes
  * @return void
  */
-void LogFinishedSRTN(struct process *proc, int noOfProcesses, int waiting, int nonIdle, int sumTA)
+void LogFinishedSRTN(struct process *proc, int noOfProcesses)
 {
     if (proc == NULL)
     {
@@ -78,7 +78,7 @@ void LogFinishedSRTN(struct process *proc, int noOfProcesses, int waiting, int n
 
         fprintf(filePointer, "At time %d, process %d Finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
                 clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime - proc->runningtime, clock - proc->arrivaltime, (float)clock - proc->arrivaltime / (float)noOfProcesses);
-                
+
     }
     else
     {
