@@ -6,7 +6,8 @@
 #include "gui_window_file_dialog.h"
 #include "style_cyber.h"
 #include "style_bluish.h"
-#include <stdio.h> //if you don't use scanf/printf change this include
+#include <stdio.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
@@ -19,28 +20,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
-void DrawSineWave(int *endOfAnimWidth, const int screenHeight, const int screenWidth, float *time)
-{
-    for (int x = 0; x < *endOfAnimWidth; x++)
-    {
-        float normalizedX = x / (float)screenWidth;
-        float angle = PI * 2 * normalizedX + *time;
-        float y = sin(angle) * (screenHeight / 4);
-        float y2 = cos(angle + PI / 2) * (screenHeight / 4);
-        if (x == *endOfAnimWidth - 1)
-        {
-            DrawCircle(x, screenHeight / 2 - (int)y, 20, RED);
-            DrawCircle(x, screenHeight / 2 - (int)y2, 20, BLUE);
-        }
-        DrawPixel(x, screenHeight / 2 - (int)y, RED);
-        DrawPixel(x, screenHeight / 2 - (int)y2, BLUE);
-    }
-    *time += GetFrameTime();
-    if (*endOfAnimWidth != screenWidth - 50)
-    {
-        *endOfAnimWidth++;
-    }
-}
+
 struct process
 {
     int id;
@@ -71,12 +51,12 @@ int isInteger(const char *str)
     return str[i] == '\0';
 }
 
-char *processToString(struct process temp)
-{
-    char str[100];
-    sprintf(str, "P%d AT:%d RUN:%d Remaining:%d Priority:%d", temp.id, temp.arrivaltime, temp.runningtime, temp.remainingtime, temp.priority);
-    return str;
-}
+// char *processToString(struct process temp)
+// {
+//     char str[100];
+//     sprintf(str, "P%d AT:%d RUN:%d Remaining:%d Priority:%d", temp.id, temp.arrivaltime, temp.runningtime, temp.remainingtime, temp.priority);
+//     return str;
+// }
 int main(void)
 {
     const int screenWidth = 1280;
@@ -88,7 +68,7 @@ int main(void)
     char *lightDarkMode = "Toggle Light Mode"; // light/dark mode label text
     GuiLoadStyleCyber();                       // init state is dark
     int endOfAnimWidth = 0;                    // BG animation width
-    float time = 0;                            // moves the wave
+    float time_wave = 0;                       // moves the wave
 
     /*Choose algorithm Page Variables*/
     bool dropdownAlgo = false;
@@ -115,11 +95,36 @@ int main(void)
         3 -> Statistics Page
     */
     int pageShifter = 0;
-
+    float animationSpeed = 2.0f;
+    SetTargetFPS(60);
+    Vector2 pointsSine[screenWidth];
+    Vector2 pointsCosine[screenWidth];
     while (loop)
     {
-        printf("%i \n", endOfAnimWidth);
         BeginDrawing();
+        DrawFPS(0, 0);
+        for (int x = 0; x < endOfAnimWidth; x++)
+        {
+            float normalizedX = x / (float)screenWidth;
+            float angle = PI * 2 * normalizedX + time_wave;
+            float y = sin(angle) * (screenHeight / 4);
+            pointsSine[x] = (Vector2){x, screenHeight / 2 - (int)y};
+            float y2 = cos(angle + PI / 2) * (screenHeight / 4);
+            pointsCosine[x] = (Vector2){x, screenHeight / 2 - (int)y2};
+            if (x == endOfAnimWidth - 1)
+            {
+                DrawCircle(x, screenHeight / 2 - (int)y, 20, RED);
+                DrawCircle(x, screenHeight / 2 - (int)y2, 20, BLUE);
+            }
+        }
+        DrawLineStrip(pointsSine, endOfAnimWidth, RED);
+        DrawLineStrip(pointsCosine, endOfAnimWidth, BLUE);
+        float frameTime = GetFrameTime();
+        time_wave += frameTime * animationSpeed;
+        if (endOfAnimWidth < screenWidth - 50)
+        {
+            endOfAnimWidth += 6;
+        }
         if (pageShifter == 0)
         {
             GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
@@ -145,8 +150,6 @@ int main(void)
             {
                 pageShifter = 1;
             }
-            /*Background Animation*/
-            DrawSineWave(&endOfAnimWidth, screenHeight, screenWidth, &time);
         }
 
         if (pageShifter == 1)
@@ -239,7 +242,6 @@ int main(void)
             GuiUnlock();
 
             GuiWindowFileDialog(&fileDialogState);
-            DrawSineWave(&endOfAnimWidth, screenHeight, screenWidth, &time);
         }
         if (pageShifter == 2)
         {
@@ -268,9 +270,6 @@ int main(void)
             {
                 pageShifter = 3;
             }
-
-            /* Background Animation */
-            DrawSineWave(&endOfAnimWidth, screenHeight, screenWidth, &time);
         }
         if (pageShifter == 3)
         {

@@ -1,0 +1,11 @@
+At time 8, process 1 Stopped. Arr: 4, remain: 16,Total:20, wait: 4.
+At time 8, process 2 started. Arr: 8, remain: 3,Total:3, wait: 0.
+At time 10, process 2 Stopped. Arr: 8, remain: 1,Total:3, wait: 2.
+At time 10, process 3 started. Arr: 9, remain: 1,Total:1, wait: 1.
+At time 11, process 3 Finished. Arr: 9, remain: 0,Total:1, wait: 1. TA 2 WTA 8.00
+At time 11, process 1 Resumed. Arr: 4, remain: 16,Total:20, wait: 7.
+At time 13, process 1 Stopped. Arr: 4, remain: 14,Total:20, wait: 9.
+At time 13, process 2 Resumed. Arr: 8, remain: 1,Total:3, wait: 5.
+At time 14, process 2 Finished. Arr: 8, remain: 0,Total:3, wait: 3. TA 6 WTA 11.33
+At time 14, process 1 Resumed. Arr: 4, remain: 14,Total:20, wait: 10.
+At time 28, process 1 Finished. Arr: 4, remain: 0,Total:20, wait: 4. TA 24 WTA 26.67
