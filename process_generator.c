@@ -2,8 +2,8 @@
 #include "RoundRobin.h"
 int numOfProcesses = 0;
 struct process *processQueue = NULL;
-int ReadyQueueID, SendQueueID, ReceiveQueueID,GUIID;
-
+int ReadyQueueID, SendQueueID, ReceiveQueueID, GUIID;
+pid_t Scheduler ;
 void clearResources(int);
 
 int main(int argc, char *argv[])
@@ -85,13 +85,13 @@ int main(int argc, char *argv[])
     initSync();
     *Synchro = 0;
     // Fork the scheduler process
-    pid_t Scheduler = fork();
+    Scheduler = fork();
     if (Scheduler == 0)
     {
         execv("./scheduler.out", SchedParam);
     }
     key_t GUIKey;
- 
+
     GUIKey = ftok("keys/Guiman", 'A');
     GUIID = msgget(GUIKey, 0666 | IPC_CREAT);
     if (GUIID == -1)
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
             struct process temp2 = processQueue[i];
             msgsnd(ReadyQueueID, &temp, sizeof(temp), IPC_NOWAIT); // Send the process to the scheduler
             msgsnd(GUIID, &temp2, sizeof(temp2), IPC_NOWAIT);
-            //printf("Process %d sent to scheduler at time = %d\n",processQueue[i].id,processQueue[i].arrivaltime);
+            // printf("Process %d sent to scheduler at time = %d\n",processQueue[i].id,processQueue[i].arrivaltime);
             i++;
         }
         else
@@ -134,7 +134,7 @@ void clearResources(int signum)
 {
     free(processQueue);
     destroySync(true);
-    msgctl(GUIID,IPC_RMID, NULL);
+    msgctl(GUIID, IPC_RMID, NULL);
     msgctl(ReadyQueueID, IPC_RMID, NULL);
     msgctl(SendQueueID, IPC_RMID, NULL);
     msgctl(ReceiveQueueID, IPC_RMID, NULL);

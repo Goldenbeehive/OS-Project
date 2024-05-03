@@ -1,1 +1,42 @@
-At time 1, process 1 started. Arr: 1, remain: 12,Total:12, wait: 0.
+At time 1, process 2 started. Arr: 1, remain: 2,Total:2, wait: 0.
+At time 3, process 2 finished. Arr: 1, remain: 0,Total:2, wait: 0. TA 2 WTA 1.00
+At time 3, process 20 started. Arr: 1, remain: 2,Total:2, wait: 2.
+At time 5, process 20 finished. Arr: 1, remain: 0,Total:2, wait: 2. TA 4 WTA 2.00
+At time 5, process 20 started. Arr: 1, remain: 2,Total:2, wait: 4.
+At time 7, process 20 finished. Arr: 1, remain: 0,Total:2, wait: 4. TA 6 WTA 3.00
+At time 7, process 19 started. Arr: 1, remain: 2,Total:2, wait: 6.
+At time 9, process 19 finished. Arr: 1, remain: 0,Total:2, wait: 6. TA 8 WTA 4.00
+At time 9, process 18 started. Arr: 1, remain: 2,Total:2, wait: 8.
+At time 11, process 18 finished. Arr: 1, remain: 0,Total:2, wait: 8. TA 10 WTA 5.00
+At time 11, process 17 started. Arr: 1, remain: 2,Total:2, wait: 10.
+At time 13, process 17 finished. Arr: 1, remain: 0,Total:2, wait: 10. TA 12 WTA 6.00
+At time 13, process 4 started. Arr: 1, remain: 2,Total:2, wait: 12.
+At time 15, process 4 finished. Arr: 1, remain: 0,Total:2, wait: 12. TA 14 WTA 7.00
+At time 15, process 15 started. Arr: 1, remain: 2,Total:2, wait: 14.
+At time 17, process 15 finished. Arr: 1, remain: 0,Total:2, wait: 14. TA 16 WTA 8.00
+At time 17, process 14 started. Arr: 1, remain: 2,Total:2, wait: 16.
+At time 19, process 14 finished. Arr: 1, remain: 0,Total:2, wait: 16. TA 18 WTA 9.00
+At time 19, process 13 started. Arr: 1, remain: 2,Total:2, wait: 18.
+At time 21, process 13 finished. Arr: 1, remain: 0,Total:2, wait: 18. TA 20 WTA 10.00
+At time 21, process 12 started. Arr: 1, remain: 2,Total:2, wait: 20.
+At time 23, process 12 finished. Arr: 1, remain: 0,Total:2, wait: 20. TA 22 WTA 11.00
+At time 23, process 11 started. Arr: 1, remain: 2,Total:2, wait: 22.
+At time 25, process 11 finished. Arr: 1, remain: 0,Total:2, wait: 22. TA 24 WTA 12.00
+At time 25, process 10 started. Arr: 1, remain: 2,Total:2, wait: 24.
+At time 27, process 10 finished. Arr: 1, remain: 0,Total:2, wait: 24. TA 26 WTA 13.00
+At time 27, process 9 started. Arr: 1, remain: 2,Total:2, wait: 26.
+At time 29, process 9 finished. Arr: 1, remain: 0,Total:2, wait: 26. TA 28 WTA 14.00
+At time 29, process 8 started. Arr: 1, remain: 2,Total:2, wait: 28.
+At time 31, process 8 finished. Arr: 1, remain: 0,Total:2, wait: 28. TA 30 WTA 15.00
+At time 31, process 7 started. Arr: 1, remain: 2,Total:2, wait: 30.
+At time 33, process 7 finished. Arr: 1, remain: 0,Total:2, wait: 30. TA 32 WTA 16.00
+At time 33, process 6 started. Arr: 1, remain: 2,Total:2, wait: 32.
+At time 35, process 6 finished. Arr: 1, remain: 0,Total:2, wait: 32. TA 34 WTA 17.00
+At time 35, process 5 started. Arr: 1, remain: 2,Total:2, wait: 34.
+At time 37, process 5 finished. Arr: 1, remain: 0,Total:2, wait: 34. TA 36 WTA 18.00
+At time 37, process 16 started. Arr: 1, remain: 2,Total:2, wait: 36.
+At time 39, process 16 finished. Arr: 1, remain: 0,Total:2, wait: 36. TA 38 WTA 19.00
+At time 39, process 3 started. Arr: 1, remain: 2,Total:2, wait: 38.
+At time 41, process 3 finished. Arr: 1, remain: 0,Total:2, wait: 38. TA 40 WTA 20.00
+At time 41, process 1 started. Arr: 1, remain: 10,Total:10, wait: 40.
+At time 51, process 1 finished. Arr: 1, remain: 0,Total:10, wait: 40. TA 50 WTA 5.00

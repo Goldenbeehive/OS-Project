@@ -22,6 +22,9 @@
 #include <signal.h>
 #include <string.h>
 int pageShifter = 0;
+int *clkptr;
+int clkid;
+int clkFound = 0;
 float cpu_utilization = 0.0f, avg_wta = 0.0f, avg_waiting = 0.0f, std_wta = 0.0f;
 
 struct process
@@ -120,7 +123,7 @@ void removeProcessByID(int idToRemove, int *numProcesses, struct process rdyProc
 int main(void)
 {
     signal(SIGINT, sigint_handler);
-    int ss =0;
+    int ss = 0;
     const int screenWidth = 1280;
     const int screenHeight = 800;
     int loop = 1;
@@ -210,9 +213,10 @@ int main(void)
     struct process ArrivedProcess;
     while (loop)
     {
-        if(ss ==1){ 
-                TakeScreenshot("schedulerperfimage.png");
-                ss =3;
+        if (ss == 1)
+        {
+            TakeScreenshot("schedulerperfimage.png");
+            ss = 3;
         }
         int received = msgrcv(GUIID, &ArrivedProcess, sizeof(ArrivedProcess), 0, IPC_NOWAIT);
         if (received != -1)
@@ -243,7 +247,7 @@ int main(void)
                     continue;
                 }
                 char temp[1000];
-                sprintf(temp, "P%d;",rdyProcList[i].id);
+                sprintf(temp, "P%d;", rdyProcList[i].id);
                 strcat(rdyList, temp);
             }
         }
@@ -424,7 +428,6 @@ int main(void)
                 }
                 if (!rrError && !testgenError && genfile)
                 {
-                    printf("eeeeeee");
                     char *args_test[] = {"./test_generator.out", ProcessCount, NULL};
                     pid_t TestGen = vfork();
                     if (TestGen == 0)
@@ -451,6 +454,22 @@ int main(void)
         }
         if (pageShifter == 2)
         {
+            if (clkFound == 0)
+            {
+                clkid = shmget(300, 4, 0444);
+                while ((int)clkid == -1)
+                {
+                    printf("Wait! The clock not initialized yet!\n");
+                    sleep(1);
+                    clkid = shmget(300, 4, 0444);
+                }
+                clkptr = (int *)shmat(clkid, (void *)0, 0);
+                clkFound = 1;
+            }
+            GuiSetStyle(DEFAULT, TEXT_SIZE, 30);
+            char timetemp[1000];
+            sprintf(timetemp, "Current CLK : %i", *clkptr);
+            GuiLabel((Rectangle){120, 100, 600, 30}, timetemp);
             GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
             ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
             /* Top buttons*/
@@ -498,17 +517,17 @@ int main(void)
             DrawText(fileTemp, screenWidth / 2 - 200 + 50, screenHeight / 2 - 100 + 150, 20, LIGHTGRAY);
             sprintf(fileTemp, "Std WTA = %.2f", std_wta);
             DrawText(fileTemp, screenWidth / 2 - 200 + 50, screenHeight / 2 - 100 + 200, 20, LIGHTGRAY);
-            if(ss == 0){
-            ss =1;
+            if (ss == 0)
+            {
+                ss = 1;
             }
-
         }
         EndDrawing();
     }
     shmctl(runningID, IPC_RMID, NULL);
     shmctl(deadID, IPC_RMID, NULL);
-    kill(ProcessGen, SIGINT);
+    shmctl(clkid, IPC_RMID, NULL);
+    kill(getpgrp(), SIGINT);
     CloseWindow();
-
     return 0;
 }
