@@ -25,15 +25,17 @@ void clearLogFileSRTN()
  * @param proc The process structure containing details of the process being logged
  * @return void
  */
-void LogStartedSRTN(struct process *proc)
+void LogStartedSRTN(struct process *proc, int *shared)
 {
     if (proc == NULL)
     {
         return;
     }
     int clock = getClk();
+
     FILE *filePointer;
     filePointer = fopen("scheduler.log", "a");
+    *shared = proc->id;
     if (filePointer == NULL)
     {
         printf("Unable to open scheduler.log.\n");
@@ -60,7 +62,7 @@ void LogStartedSRTN(struct process *proc)
  * @param noOfProcesses The total number of processes
  * @return void
  */
-void LogFinishedSRTN(struct process *proc, int noOfProcesses, int *runningTimeSum, float *WTASum, int *waitingTimeSum, float TAArray[], int *TAArrayIndex)
+void LogFinishedSRTN(struct process *proc, int noOfProcesses, int *runningTimeSum, float *WTASum, int *waitingTimeSum, float TAArray[], int *TAArrayIndex,int*shared)
 {
     if (proc == NULL)
     {
@@ -85,6 +87,7 @@ void LogFinishedSRTN(struct process *proc, int noOfProcesses, int *runningTimeSu
         *waitingTimeSum += clock - proc->arrivaltime - proc->runningtime;
         TAArray[*TAArrayIndex] = ((float)clock - proc->arrivaltime) / (float)proc->runningtime;
         *TAArrayIndex = *TAArrayIndex + 1;
+        *shared = proc->id;
     }
     else
     {
@@ -132,6 +135,34 @@ bool ReceiveProcess(struct MinHeap *minHeap, int ReadyQueueID)
 void SRTN(int noOfProcesses)
 {
     printf("STRN Running\n");
+    key_t runningProcKey = ftok("keys/Guirunningman", 'A');
+    int runningID = shmget(runningProcKey, 4, IPC_CREAT | 0644);
+    if ((long)runningID == -1)
+    {
+        perror("Error in creating shm!");
+        exit(-1);
+    }
+    int *runningProcess = (int *)shmat(runningID, (void *)0, 0);
+    if ((long)runningProcess == -1)
+    {
+        perror("Error in attaching!");
+        exit(-1);
+    }
+    *runningProcess = -1;
+    key_t deadProcKey = ftok("keys/Guideadman", 'A');
+    int deadID = shmget(deadProcKey, 4, IPC_CREAT | 0644);
+    if ((long)deadID == -1)
+    {
+        perror("Error in creating shm!");
+        exit(-1);
+    }
+    int *deadProcess = (int *)shmat(deadID, (void *)0, 0);
+    if ((long)deadProcess == -1)
+    {
+        perror("Error in attaching!");
+        exit(-1);
+    }
+    *deadProcess = -1;
     float TAArray[noOfProcesses];
     int TAArrayIndex = 0;
     int runningTimeSum = 0;
@@ -151,7 +182,9 @@ void SRTN(int noOfProcesses)
         struct process *currentProcess = NULL, tmp;
 
         printf("Current clock = %d\n", clk);
-        while(getSync() == 0){}
+        while (getSync() == 0)
+        {
+        }
         while (ReceiveProcess(minHeap, ReadyQueueID))
             ;
         if (minHeap->heap_size > 0)
@@ -162,19 +195,19 @@ void SRTN(int noOfProcesses)
             {
                 keeper = (struct process *)malloc(sizeof(struct process));
                 *keeper = *currentProcess;
-                LogStartedSRTN(currentProcess);
+                LogStartedSRTN(currentProcess, runningProcess);
             }
             if (keeper != NULL && keeper->id != currentProcess->id)
             {
-                LogFinishedSRTN(keeper, noOfProcesses, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex);
-                LogStartedSRTN(currentProcess);
+                LogFinishedSRTN(keeper, noOfProcesses, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex,deadProcess);
+                LogStartedSRTN(currentProcess, runningProcess);
                 *keeper = *currentProcess;
             }
 
             struct msgbuff receivedmsg;
             struct timespec req;
             req.tv_sec = 0;
-            req.tv_nsec = 1;  
+            req.tv_nsec = 1;
             nanosleep(&req, NULL);
             int received = msgrcv(ReceiveQueueID, &receivedmsg, sizeof(receivedmsg.msg), 0, IPC_NOWAIT);
             if (received != -1)
@@ -182,17 +215,17 @@ void SRTN(int noOfProcesses)
                 currentProcess->remainingtime = receivedmsg.msg;
             }
 
-            if (currentProcess->remainingtime == 0)
+            if (currentProcess->remainingtime <= 0)
             {
                 printf("Process with ID: %d has finished\n", currentProcess->id);
-                LogFinishedSRTN(currentProcess, noOfProcesses, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex);
+                LogFinishedSRTN(currentProcess, noOfProcesses, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex,deadProcess);
                 struct process Terminated = extractMin(minHeap, 1);
                 remainingProcesses--;
                 wait(NULL);
                 if (minHeap->heap_size != 0)
                 {
                     currentProcess = getMin_ptr(minHeap);
-                    LogStartedSRTN(currentProcess);
+                    LogStartedSRTN(currentProcess, runningProcess);
                     *keeper = *currentProcess;
                 }
             }
@@ -229,5 +262,7 @@ void SRTN(int noOfProcesses)
     fprintf(perf, "Std WTA = %.2f \n", counter);
     fclose(perf);
     free(keeper);
+    shmdt(runningProcess);
+
     destroy(minHeap);
 }

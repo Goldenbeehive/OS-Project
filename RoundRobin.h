@@ -27,12 +27,13 @@ void clearLogFileRR()
  * @param proc The process structure containing details of the process being logged
  * @return void
  */
-void LogStartedRR(struct process proc)
+void LogStartedRR(struct process proc, int *shared)
 {
 
     int clock = getClk();
     FILE *filePointer;
     filePointer = fopen("scheduler.log", "a");
+    *shared = proc.id;
     if (filePointer == NULL)
     {
         printf("Unable to open scheduler.log.\n");
@@ -59,7 +60,7 @@ void LogStartedRR(struct process proc)
  * @param noOfProcesses The total number of processes
  * @return void
  */
-void LogFinishedRR(struct process proc, int noOfProcesses, int *runningTimeSum, float *WTASum, int *waitingTimeSum, float TAArray[], int *TAArrayIndex)
+void LogFinishedRR(struct process proc, int noOfProcesses, int *runningTimeSum, float *WTASum, int *waitingTimeSum, float TAArray[], int *TAArrayIndex,int*shared)
 {
 
     int clock = getClk();
@@ -80,6 +81,7 @@ void LogFinishedRR(struct process proc, int noOfProcesses, int *runningTimeSum, 
         *waitingTimeSum += clock - proc.arrivaltime - proc.runningtime;
         TAArray[*TAArrayIndex] = ((float)clock - proc.arrivaltime) / (float)proc.runningtime;
         *TAArrayIndex = *TAArrayIndex + 1;
+        *shared = proc.id;
     }
     else
     {
@@ -91,6 +93,34 @@ void LogFinishedRR(struct process proc, int noOfProcesses, int *runningTimeSum, 
 void RoundRobin(int quantum, int processCount)
 {
     printf("Round Robin Scheduler\n");
+     key_t runningProcKey = ftok("keys/Guirunningman", 'A');
+    int runningID = shmget(runningProcKey, 4, IPC_CREAT | 0644);
+    if ((long)runningID == -1)
+    {
+        perror("Error in creating shm!");
+        exit(-1);
+    }
+    int *runningProcess = (int *)shmat(runningID, (void *)0, 0);
+    if ((long)runningProcess == -1)
+    {
+        perror("Error in attaching!");
+        exit(-1);
+    }
+    *runningProcess = -1;
+    key_t deadProcKey = ftok("keys/Guideadman", 'A');
+    int deadID = shmget(deadProcKey, 4, IPC_CREAT | 0644);
+    if ((long)deadID == -1)
+    {
+        perror("Error in creating shm!");
+        exit(-1);
+    }
+    int *deadProcess = (int *)shmat(deadID, (void *)0, 0);
+    if ((long)deadProcess == -1)
+    {
+        perror("Error in attaching!");
+        exit(-1);
+    }
+    *deadProcess = -1;
     clearLogFileRR();
     float TAArray[processCount];
     int TAArrayIndex = 0;
@@ -177,7 +207,7 @@ void RoundRobin(int quantum, int processCount)
                 {
                     // If the process has finished, remove it from the running list
                     printf("Process with ID: %d has finished\n", p.id);
-                    LogFinishedRR(p, processCount, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex);
+                    LogFinishedRR(p, processCount, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex,deadProcess);
                     struct process Terminated;
                     removeCurrent(Running_List, &Terminated);
                     displayList(Running_List);
@@ -199,7 +229,7 @@ void RoundRobin(int quantum, int processCount)
                 if (temp.id != newCurrent.id)
                 {
 
-                    LogFinishedRR(temp, processCount, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex);
+                    LogFinishedRR(temp, processCount, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex,deadProcess);
                     // LogStartedRR(newCurrent);
                 }
                 else
@@ -228,7 +258,7 @@ void RoundRobin(int quantum, int processCount)
             {
                 currentProcess.flag = 1;
                 changeCurrentData(Running_List, currentProcess);
-                LogStartedRR(currentProcess);
+                LogStartedRR(currentProcess,runningProcess);
             }
             if (HasStartedArray[currentProcess.id] == 0)
             {

@@ -1,3 +1,4 @@
+#include <errno.h>
 #include "raylib.h"
 #define RAYGUI_IMPLEMENTATION
 #define GUI_WINDOW_FILE_DIALOG_IMPLEMENTATION
@@ -20,10 +21,13 @@
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
+int pageShifter = 0;
+float cpu_utilization = 0.0f, avg_wta = 0.0f, avg_waiting = 0.0f, std_wta = 0.0f;
 
 struct process
 {
     int id;
+    pid_t pid;
     int arrivaltime;
     int runningtime;
     int priority;
@@ -50,15 +54,73 @@ int isInteger(const char *str)
     }
     return str[i] == '\0';
 }
+void clearCharArray(char *array, int length)
+{
+    memset(array, '\0', length);
+}
 
-// char *processToString(struct process temp)
-// {
-//     char str[100];
-//     sprintf(str, "P%d AT:%d RUN:%d Remaining:%d Priority:%d", temp.id, temp.arrivaltime, temp.runningtime, temp.remainingtime, temp.priority);
-//     return str;
-// }
+bool isProcessExist(int id, int numProcesses, struct process rdyProcList[])
+{
+    for (int i = 0; i < numProcesses; i++)
+    {
+        if (rdyProcList[i].id == id)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+void sigint_handler(int sig)
+{
+    pageShifter = 3;
+    FILE *file = fopen("scheduler.perf", "r");
+
+    if (file == NULL)
+    {
+        printf("Error opening the file.\n");
+        return;
+    }
+    fscanf(file, "CPU Utilization = %f %%\n", &cpu_utilization);
+    fscanf(file, "Avg WTA = %f\n", &avg_wta);
+    fscanf(file, "Avg Waiting = %f\n", &avg_waiting);
+    fscanf(file, "Std WTA = %f\n", &std_wta);
+    fclose(file);
+}
+
+void addProcess(struct process newProcess, int *numProcesses, struct process rdyProcList[])
+{
+    if (!isProcessExist(newProcess.id, *numProcesses, rdyProcList))
+    {
+        rdyProcList[(*numProcesses)] = newProcess;
+        *numProcesses = (*numProcesses) + 1;
+    }
+}
+void removeProcessByID(int idToRemove, int *numProcesses, struct process rdyProcList[])
+{
+    int i, found = 0;
+    for (i = 0; i < *numProcesses; i++)
+    {
+        if (rdyProcList[i].id == idToRemove)
+        {
+            found = 1;
+            break;
+        }
+    }
+    if (found)
+    {
+
+        for (; i < (*numProcesses) - 1; i++)
+        {
+            rdyProcList[i] = rdyProcList[i + 1];
+        }
+        (*numProcesses)--;
+    }
+}
+
 int main(void)
 {
+    signal(SIGINT, sigint_handler);
+    int ss =0;
     const int screenWidth = 1280;
     const int screenHeight = 800;
     int loop = 1;
@@ -79,7 +141,7 @@ int main(void)
     bool rrError = false;
     bool txtError = false;
     bool testgenError = false;
-    bool genfile=false;
+    bool genfile = false;
     char rrQuantum[100] = "";
     char ProcessCount[100] = "";
     /*Simulation Page Variables*/
@@ -87,9 +149,10 @@ int main(void)
     int listViewActive = -1;
     int listViewScrollIndex2 = 0;
     int listViewActive2 = -1;
-    char rdyList[1024] = "P2 AT:20 RUN:30 Remaining:25 Priority:88";
-    char doneList[1024] = "P0;P1;P2;P3;P4";
-    char workingList[1024] = "P5";
+    char rdyList[5000] = "";
+
+    char doneList[5000] = "";
+    char workingList[1024] = "n/a";
 
     /*  Page List:
         0 -> Title Page
@@ -97,13 +160,113 @@ int main(void)
         2 -> Simulation Page
         3 -> Statistics Page
     */
-    int pageShifter = 0;
+
     float animationSpeed = 2.0f;
     SetTargetFPS(60);
     Vector2 pointsSine[screenWidth];
     Vector2 pointsCosine[screenWidth];
+    struct process doneProcList[3000];
+    struct process rdyProcList[3000];
+    int deadindex = 0;
+    int rdyindex = 0;
+    key_t GUIKey;
+    int GUIID;
+    GUIKey = ftok("keys/Guiman", 'A');
+    GUIID = msgget(GUIKey, 0666 | IPC_CREAT);
+    printf("%i\n\n\n\n", GUIID);
+    if (GUIID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+    key_t runningProcKey = ftok("keys/Guirunningman", 'A');
+    int runningID = shmget(runningProcKey, 4, IPC_CREAT | 0644);
+    if ((long)runningID == -1)
+    {
+        perror("Error in creating shm!");
+        exit(-1);
+    }
+    int *runningProcess = (int *)shmat(runningID, (void *)0, 0);
+    if ((long)runningProcess == -1)
+    {
+        perror("Error in attaching!");
+        exit(-1);
+    }
+    *runningProcess = -1;
+    key_t deadProcKey = ftok("keys/Guideadman", 'A');
+    int deadID = shmget(deadProcKey, 4, IPC_CREAT | 0644);
+    if ((long)deadID == -1)
+    {
+        perror("Error in creating shm!");
+        exit(-1);
+    }
+    int *deadProcess = (int *)shmat(deadID, (void *)0, 0);
+    if ((long)deadProcess == -1)
+    {
+        perror("Error in attaching!");
+        exit(-1);
+    }
+    *deadProcess = -1;
+    struct process ArrivedProcess;
     while (loop)
     {
+        if(ss ==1){
+             
+                TakeScreenshot("schedulerperfimage.png");
+                ss =3;
+        }
+        int received = msgrcv(GUIID, &ArrivedProcess, sizeof(ArrivedProcess), 0, IPC_NOWAIT);
+        if (received != -1)
+        {
+            addProcess(ArrivedProcess, &rdyindex, rdyProcList);
+            clearCharArray(rdyList, 5000);
+            for (int i = 0; i < rdyindex; i++)
+            {
+                if (rdyProcList[i].id == *runningProcess)
+                {
+                    continue;
+                }
+                char temp[1000];
+                sprintf(temp, "P%d", rdyProcList[i].id);
+                strcat(rdyList, temp);
+            }
+        }
+
+        if (*runningProcess != -1)
+        {
+            sprintf(workingList, "P%i", *runningProcess);
+
+            clearCharArray(rdyList, 5000);
+            for (int i = 0; i < rdyindex; i++)
+            {
+                if (rdyProcList[i].id == *runningProcess)
+                {
+                    continue;
+                }
+                char temp[1000];
+                sprintf(temp, "P%d",rdyProcList[i].id);
+                strcat(rdyList, temp);
+            }
+        }
+        if (*deadProcess != -1)
+        {
+            if (*runningProcess == *deadProcess)
+            {
+                sprintf(workingList, "n/a");
+            }
+            struct process x;
+            x.id = *deadProcess;
+            addProcess(x, &deadindex, doneProcList);
+            removeProcessByID(x.id, &rdyindex, rdyProcList);
+            clearCharArray(doneList, 5000);
+            for (int i = 0; i < deadindex; i++)
+            {
+                char temp[1000];
+                sprintf(temp, "P%d;", doneProcList[i].id);
+                strcat(doneList, temp);
+            }
+        }
+
         BeginDrawing();
         DrawFPS(0, 0);
         for (int x = 0; x < endOfAnimWidth; x++)
@@ -184,7 +347,7 @@ int main(void)
             GuiLabel((Rectangle){30, 50, screenWidth, 120}, "Choose a algorithm:");
             GuiSetStyle(DEFAULT, TEXT_SIZE, 30);
 
-            if (GuiDropdownBox((Rectangle){30, 180, 600, 60}, "Round Robin;Highest Priority First;Shortest Time Remaining Next", &algoChoice, dropdownAlgo))
+            if (GuiDropdownBox((Rectangle){30, 180, 600, 60}, "Round Robin;Shortest Time Remaining Next;Highest Priority First", &algoChoice, dropdownAlgo))
             {
                 dropdownAlgo = !dropdownAlgo;
             }
@@ -198,10 +361,11 @@ int main(void)
                     DrawText("Please enter a valid quantum.", 730, 280, 30, RED);
                 }
             }
-            if(GuiCheckBox((Rectangle){30, 300, 20, 20}, "Test Generator", NULL)){
-                genfile = !genfile;
+            if (GuiCheckBox((Rectangle){30, 300, 20, 20}, "Test Generator", &genfile))
+            {
             }
-            if(genfile){
+            if (genfile)
+            {
                 Rectangle NumRect = {30, 400, 500, 60};
                 GuiLabel((Rectangle){30, 350, 500, 60}, "Enter Number of Processes:");
                 GuiTextBox(NumRect, ProcessCount, 20, (CheckCollisionPointRec(GetMousePosition(), NumRect) ? true : false));
@@ -216,7 +380,7 @@ int main(void)
             strcat(fileText, "/");
             strcat(fileText, fileDialogState.fileNameText);
             GuiLabel((Rectangle){30, 500, screenWidth, 120}, "Choose your process text file:");
-            
+
             GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
             if (txtError)
             {
@@ -244,46 +408,46 @@ int main(void)
                     }
                 }
                 if (!isInteger(ProcessCount) || ProcessCount[0] == '\0')
-                    {
-                        testgenError = true;
-                    }
-                if (!txtError && !rrError)
+                {
+                    testgenError = true;
+                }
+                if (!txtError && !rrError && !genfile)
                 {
                     char algoChoicestr[5];
                     sprintf(algoChoicestr, "%d", algoChoice + 1);
                     char *args[] = {"./process_generator.out", fileDialogState.fileNameText, algoChoicestr, rrQuantum, NULL};
-                    pid_t ProcessGen = fork();
+                    pid_t ProcessGen = vfork();
                     if (ProcessGen == 0)
                     {
                         execv(args[0], args);
                     }
                     pageShifter = 2;
                 }
-                if (txtError && !rrError && !testgenError)
+                if (!txtError && !rrError && !testgenError && genfile)
                 {
+                    printf("eeeeeee");
                     char *args_test[] = {"./test_generator.out", ProcessCount, NULL};
-                    pid_t TestGen = fork();
+                    pid_t TestGen = vfork();
                     if (TestGen == 0)
                     {
                         execv(args_test[0], args_test);
                     }
+
                     waitpid(TestGen, NULL, 0);
 
                     char algoChoicestr[5];
                     sprintf(algoChoicestr, "%d", algoChoice + 1);
                     char *args[] = {"./process_generator.out", "processes.txt", algoChoicestr, rrQuantum, NULL};
-                    pid_t ProcessGen = fork();
+                    pid_t ProcessGen = vfork();
                     if (ProcessGen == 0)
                     {
                         execv(args[0], args);
                     }
                     pageShifter = 2;
                 }
-                
             }
 
             GuiUnlock();
-
             GuiWindowFileDialog(&fileDialogState);
         }
         if (pageShifter == 2)
@@ -309,10 +473,6 @@ int main(void)
             GuiListView((Rectangle){screenWidth - 550, 150 + 20, 400, 300}, rdyList, &listViewScrollIndex2, &listViewActive2);
             GuiGroupBox((Rectangle){screenWidth - 550, 500, 400, 200}, "Memory");
             DrawText("MEM WIP", screenWidth - 550 + 150, 590, 20, RED);
-            if (GuiButton((Rectangle){screenWidth - 300, screenHeight - 50, 100, 40}, "Open Debug Stats"))
-            {
-                pageShifter = 3;
-            }
         }
         if (pageShifter == 3)
         {
@@ -330,17 +490,24 @@ int main(void)
                 lightDarkBool ? GuiLoadStyleBluish() : GuiLoadStyleCyber();
             }
             GuiGroupBox((Rectangle){screenWidth / 2 - 200, screenHeight / 2 - 100, 400, 270}, "Performance");
-            DrawText("CPU utilization = 100%", screenWidth / 2 - 200 + 50, screenHeight / 2 - 100 + 50, 20, LIGHTGRAY);
-            DrawText("Avg WTA = 1.34", screenWidth / 2 - 200 + 50, screenHeight / 2 - 100 + 100, 20, LIGHTGRAY);
-            DrawText("Avg Waiting = 1.5", screenWidth / 2 - 200 + 50, screenHeight / 2 - 100 + 150, 20, LIGHTGRAY);
-            DrawText("Std WTA = 0.34", screenWidth / 2 - 200 + 50, screenHeight / 2 - 100 + 200, 20, LIGHTGRAY);
-            if (GuiButton((Rectangle){screenWidth / 2 - 100, screenHeight - 50, 200, 40}, "Back to Title Screen"))
-            {
-                pageShifter = 0;
+            char fileTemp[300];
+            sprintf(fileTemp, "CPU utilization = %.2f %%", cpu_utilization);
+            DrawText(fileTemp, screenWidth / 2 - 200 + 50, screenHeight / 2 - 100 + 50, 20, LIGHTGRAY);
+            sprintf(fileTemp, "Avg WTA = %.2f ", avg_wta);
+            DrawText(fileTemp, screenWidth / 2 - 200 + 50, screenHeight / 2 - 100 + 100, 20, LIGHTGRAY);
+            sprintf(fileTemp, "Avg Waiting = %.2f", avg_waiting);
+            DrawText(fileTemp, screenWidth / 2 - 200 + 50, screenHeight / 2 - 100 + 150, 20, LIGHTGRAY);
+            sprintf(fileTemp, "Std WTA = %.2f", std_wta);
+            DrawText(fileTemp, screenWidth / 2 - 200 + 50, screenHeight / 2 - 100 + 200, 20, LIGHTGRAY);
+            if(ss == 0){
+            ss =1;
             }
+
         }
         EndDrawing();
     }
+    shmctl(runningID, IPC_RMID, NULL);
+    shmctl(deadID, IPC_RMID, NULL);
 
     CloseWindow();
 

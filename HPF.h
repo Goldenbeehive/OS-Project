@@ -24,7 +24,7 @@ void clearLogFile()
  * @param proc The process structure containing details of the process being logged
  * @return void
  */
-void LogStarted(struct process proc)
+void LogStarted(struct process proc,int*shared)
 {
     int clock = getClk();
     FILE *filePointer;
@@ -34,6 +34,7 @@ void LogStarted(struct process proc)
         printf("Unable to open scheduler.log.\n");
         return;
     }
+    *shared = proc.id;
     fprintf(filePointer, "At time %d, process %d started. Arr: %d, remain: %d,Total:%d, wait: %d.\n",
             clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime);
     fclose(filePointer);
@@ -45,7 +46,7 @@ void LogStarted(struct process proc)
  * @param noOfProcesses The total number of processes
  * @return void
  */
-void LogFinished(struct process proc, int noOfProcesses, int *runningTimeSum, float *WTASum, int *waitingTimeSum, float TAArray[], int *TAArrayIndex)
+void LogFinished(struct process proc, int noOfProcesses, int *runningTimeSum, float *WTASum, int *waitingTimeSum, float TAArray[], int *TAArrayIndex,int*shared)
 {
     int clock = getClk();
     FILE *filePointer;
@@ -55,6 +56,7 @@ void LogFinished(struct process proc, int noOfProcesses, int *runningTimeSum, fl
         printf("Unable to open scheduler.log.\n");
         return;
     }
+    *shared = proc.id;
     fprintf(filePointer, "At time %d, process %d finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
             clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime - proc.runningtime, clock - proc.arrivaltime, ((float)clock - proc.arrivaltime) / (float)proc.runningtime);
     *runningTimeSum += proc.runningtime;
@@ -107,6 +109,34 @@ bool ReceiveProcessHPF(struct MinHeap *minHeap, int ReadyQueueID)
 void HPF(int noOfProcesses)
 {
     printf("HPF Running");
+    key_t runningProcKey = ftok("keys/Guirunningman", 'A');
+    int runningID = shmget(runningProcKey, 4, IPC_CREAT | 0644);
+    if ((long)runningID == -1)
+    {
+        perror("Error in creating shm!");
+        exit(-1);
+    }
+    int *runningProcess = (int *)shmat(runningID, (void *)0, 0);
+    if ((long)runningProcess == -1)
+    {
+        perror("Error in attaching!");
+        exit(-1);
+    }
+    *runningProcess = -1;
+    key_t deadProcKey = ftok("keys/Guideadman", 'A');
+    int deadID = shmget(deadProcKey, 4, IPC_CREAT | 0644);
+    if ((long)deadID == -1)
+    {
+        perror("Error in creating shm!");
+        exit(-1);
+    }
+    int *deadProcess = (int *)shmat(deadID, (void *)0, 0);
+    if ((long)deadProcess == -1)
+    {
+        perror("Error in attaching!");
+        exit(-1);
+    }
+    *deadProcess = -1;
     clearLogFile();
     float TAArray[noOfProcesses];
     int TAArrayIndex = 0;
@@ -134,13 +164,10 @@ void HPF(int noOfProcesses)
             {
                 currentProcess = getMin(minHeap);
                 firstarrived = false;
-                LogStarted(currentProcess);
+                LogStarted(currentProcess,runningProcess);
             }
             struct msgbuff receivedmsg;
-            struct timespec req;
-            req.tv_sec = 0;
-            req.tv_nsec = 1; 
-            nanosleep(&req, NULL);
+           
             int received = msgrcv(ReceiveQueueID, &receivedmsg, sizeof(receivedmsg.msg), 0, IPC_NOWAIT);
             if (received != -1)
             {
@@ -149,7 +176,7 @@ void HPF(int noOfProcesses)
             if (currentProcess.remainingtime == 0)
             {
                 printf("Process with ID: %d has finished\n", currentProcess.id);
-                LogFinished(currentProcess, noOfProcesses, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex);
+                LogFinished(currentProcess, noOfProcesses, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex,deadProcess);
                 Remove(minHeap, currentProcess);
                 struct process Terminated = currentProcess;
                 remainingProcesses--;
@@ -157,7 +184,7 @@ void HPF(int noOfProcesses)
                 if (minHeap->heap_size != 0)
                 {
                     currentProcess = getMin(minHeap);
-                    LogStarted(currentProcess);
+                    LogStarted(currentProcess,runningProcess);
                 }
             }
             if (minHeap->heap_size == 0)
