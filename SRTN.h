@@ -70,6 +70,7 @@ void LogFinishedSRTN(struct process *proc, int noOfProcesses, int *runningTimeSu
         return;
     }
     int clock = getClk();
+    float wta;
     FILE *filePointer;
     filePointer = fopen("scheduler.log", "a");
     if (filePointer == NULL)
@@ -79,13 +80,13 @@ void LogFinishedSRTN(struct process *proc, int noOfProcesses, int *runningTimeSu
     }
     if (proc->remainingtime == 0)
     {
-
+        wta = ((float)clock - proc->arrivaltime) / (float)proc->runningtime;
         fprintf(filePointer, "At time %d, process %d finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
-                clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime - proc->runningtime, clock - proc->arrivaltime, ((float)clock - proc->arrivaltime) / (float)proc->runningtime);
+                clock, proc->id, proc->arrivaltime, proc->remainingtime, proc->runningtime, clock - proc->arrivaltime - proc->runningtime, clock - proc->arrivaltime, wta);
         *runningTimeSum += proc->runningtime;
-        *WTASum += ((float)clock - proc->arrivaltime) / (float)proc->runningtime;
+        *WTASum +=wta;
         *waitingTimeSum += clock - proc->arrivaltime - proc->runningtime;
-        TAArray[*TAArrayIndex] = ((float)clock - proc->arrivaltime) / (float)proc->runningtime;
+        TAArray[*TAArrayIndex] = wta;
         *TAArrayIndex = *TAArrayIndex + 1;
         *shared = proc->id;
     }

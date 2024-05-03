@@ -65,6 +65,7 @@ void LogFinishedRR(struct process proc, int noOfProcesses, int *runningTimeSum, 
 
     int clock = getClk();
     FILE *filePointer;
+    float wta;
     filePointer = fopen("scheduler.log", "a");
     if (filePointer == NULL)
     {
@@ -73,13 +74,15 @@ void LogFinishedRR(struct process proc, int noOfProcesses, int *runningTimeSum, 
     }
     if (proc.remainingtime == 0)
     {
-
+        
+        wta = ((float)clock - proc.arrivaltime) / (float)proc.runningtime;
+        
         fprintf(filePointer, "At time %d, process %d finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
-                clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime - proc.runningtime, clock - proc.arrivaltime, ((float)clock - proc.arrivaltime) / (float)proc.runningtime);
+                clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime - proc.runningtime, clock - proc.arrivaltime, wta);
         *runningTimeSum += proc.runningtime;
-        *WTASum += ((float)clock - proc.arrivaltime) / (float)proc.runningtime;
+        *WTASum += wta;
         *waitingTimeSum += clock - proc.arrivaltime - proc.runningtime;
-        TAArray[*TAArrayIndex] = ((float)clock - proc.arrivaltime) / (float)proc.runningtime;
+        TAArray[*TAArrayIndex] = wta;
         *TAArrayIndex = *TAArrayIndex + 1;
         *shared = proc.id;
     }
@@ -93,7 +96,7 @@ void LogFinishedRR(struct process proc, int noOfProcesses, int *runningTimeSum, 
 void RoundRobin(int quantum, int processCount)
 {
     printf("Round Robin Scheduler\n");
-     key_t runningProcKey = ftok("keys/Guirunningman", 'A');
+    key_t runningProcKey = ftok("keys/Guirunningman", 'A');
     int runningID = shmget(runningProcKey, 4, IPC_CREAT | 0644);
     if ((long)runningID == -1)
     {

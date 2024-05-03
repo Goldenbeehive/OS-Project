@@ -150,7 +150,7 @@ int main(void)
     int listViewScrollIndex2 = 0;
     int listViewActive2 = -1;
     char rdyList[5000] = "";
-
+    pid_t ProcessGen;
     char doneList[5000] = "";
     char workingList[1024] = "n/a";
 
@@ -210,8 +210,7 @@ int main(void)
     struct process ArrivedProcess;
     while (loop)
     {
-        if(ss ==1){
-             
+        if(ss ==1){ 
                 TakeScreenshot("schedulerperfimage.png");
                 ss =3;
         }
@@ -227,7 +226,7 @@ int main(void)
                     continue;
                 }
                 char temp[1000];
-                sprintf(temp, "P%d", rdyProcList[i].id);
+                sprintf(temp, "P%d;", rdyProcList[i].id);
                 strcat(rdyList, temp);
             }
         }
@@ -244,7 +243,7 @@ int main(void)
                     continue;
                 }
                 char temp[1000];
-                sprintf(temp, "P%d",rdyProcList[i].id);
+                sprintf(temp, "P%d;",rdyProcList[i].id);
                 strcat(rdyList, temp);
             }
         }
@@ -347,7 +346,7 @@ int main(void)
             GuiLabel((Rectangle){30, 50, screenWidth, 120}, "Choose a algorithm:");
             GuiSetStyle(DEFAULT, TEXT_SIZE, 30);
 
-            if (GuiDropdownBox((Rectangle){30, 180, 600, 60}, "Round Robin;Shortest Time Remaining Next;Highest Priority First", &algoChoice, dropdownAlgo))
+            if (GuiDropdownBox((Rectangle){30, 180, 600, 60}, "Round Robin;Shortest Remaining Time Next;Highest Priority First", &algoChoice, dropdownAlgo))
             {
                 dropdownAlgo = !dropdownAlgo;
             }
@@ -416,14 +415,14 @@ int main(void)
                     char algoChoicestr[5];
                     sprintf(algoChoicestr, "%d", algoChoice + 1);
                     char *args[] = {"./process_generator.out", fileDialogState.fileNameText, algoChoicestr, rrQuantum, NULL};
-                    pid_t ProcessGen = vfork();
+                    ProcessGen = vfork();
                     if (ProcessGen == 0)
                     {
                         execv(args[0], args);
                     }
                     pageShifter = 2;
                 }
-                if (!txtError && !rrError && !testgenError && genfile)
+                if (!rrError && !testgenError && genfile)
                 {
                     printf("eeeeeee");
                     char *args_test[] = {"./test_generator.out", ProcessCount, NULL};
@@ -438,7 +437,7 @@ int main(void)
                     char algoChoicestr[5];
                     sprintf(algoChoicestr, "%d", algoChoice + 1);
                     char *args[] = {"./process_generator.out", "processes.txt", algoChoicestr, rrQuantum, NULL};
-                    pid_t ProcessGen = vfork();
+                    ProcessGen = vfork();
                     if (ProcessGen == 0)
                     {
                         execv(args[0], args);
@@ -508,7 +507,7 @@ int main(void)
     }
     shmctl(runningID, IPC_RMID, NULL);
     shmctl(deadID, IPC_RMID, NULL);
-
+    kill(ProcessGen, SIGINT);
     CloseWindow();
 
     return 0;

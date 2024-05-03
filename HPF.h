@@ -50,6 +50,7 @@ void LogFinished(struct process proc, int noOfProcesses, int *runningTimeSum, fl
 {
     int clock = getClk();
     FILE *filePointer;
+    float wta;
     filePointer = fopen("scheduler.log", "a");
     if (filePointer == NULL)
     {
@@ -57,12 +58,15 @@ void LogFinished(struct process proc, int noOfProcesses, int *runningTimeSum, fl
         return;
     }
     *shared = proc.id;
+    
+    wta = ((float)clock - proc.arrivaltime) / (float)proc.runningtime;
+        
     fprintf(filePointer, "At time %d, process %d finished. Arr: %d, remain: %d,Total:%d, wait: %d. TA %d WTA %.2f\n",
-            clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime - proc.runningtime, clock - proc.arrivaltime, ((float)clock - proc.arrivaltime) / (float)proc.runningtime);
+            clock, proc.id, proc.arrivaltime, proc.remainingtime, proc.runningtime, clock - proc.arrivaltime - proc.runningtime, clock - proc.arrivaltime, wta);
     *runningTimeSum += proc.runningtime;
-    *WTASum += ((float)clock - proc.arrivaltime) / (float)proc.runningtime;
+    *WTASum += wta;
     *waitingTimeSum += clock - proc.arrivaltime - proc.runningtime;
-    TAArray[*TAArrayIndex] = ((float)clock - proc.arrivaltime) / (float)proc.runningtime;
+    TAArray[*TAArrayIndex] = wta;
     *TAArrayIndex = *TAArrayIndex + 1;
     fclose(filePointer);
 }
@@ -156,8 +160,7 @@ void HPF(int noOfProcesses)
         clk = getClk();
         printf("Current clock = %d\n", clk);
         while(getSync() == 0);
-        while (ReceiveProcessHPF(minHeap, ReadyQueueID))
-            ;
+        while (ReceiveProcessHPF(minHeap, ReadyQueueID));
         if (minHeap->heap_size > 0)
         {
             if (firstarrived)
@@ -167,7 +170,6 @@ void HPF(int noOfProcesses)
                 LogStarted(currentProcess,runningProcess);
             }
             struct msgbuff receivedmsg;
-           
             int received = msgrcv(ReceiveQueueID, &receivedmsg, sizeof(receivedmsg.msg), 0, IPC_NOWAIT);
             if (received != -1)
             {
@@ -189,6 +191,7 @@ void HPF(int noOfProcesses)
             }
             if (minHeap->heap_size == 0)
             {
+                firstarrived = true;
                 continue;
             }
             struct msgbuff sendmsg;
