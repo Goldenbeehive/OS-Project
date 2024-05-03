@@ -220,5 +220,7 @@ void HPF(int noOfProcesses)
     counter = sqrt(counter);
     fprintf(perf, "Std WTA = %.2f \n", counter);
     fclose(perf);
+    shmdt(runningProcess);
+    shmdt(deadProcess);
     destroy(minHeap);
 }

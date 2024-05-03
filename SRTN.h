@@ -263,6 +263,6 @@ void SRTN(int noOfProcesses)
     fclose(perf);
     free(keeper);
     shmdt(runningProcess);
-
+    shmdt(deadProcess);
     destroy(minHeap);
 }

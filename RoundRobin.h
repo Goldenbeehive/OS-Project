@@ -291,6 +291,8 @@ void RoundRobin(int quantum, int processCount)
     counter = sqrt(counter);
     fprintf(perf, "Std WTA = %.2f \n", counter);
     fclose(perf);
+    shmdt(runningProcess);
+    shmdt(deadProcess);
     destroyList(Running_List);
 }
 #endif
