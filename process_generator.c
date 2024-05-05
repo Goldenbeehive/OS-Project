@@ -40,39 +40,19 @@ int main(int argc, char *argv[])
     // Read the processes from the file
     while (fgets(line, sizeof(line), f) != NULL)
     {
-        int ID, AT, RunningTime, PRI;                                    //,MEMSISZE;
-        sscanf(line, "%d %d %d %d", &ID, &AT, &RunningTime, &PRI);       //,&MEMSIZE);
-        processQueue[i++] = initializeProcess(ID, AT, RunningTime, PRI); //,MEMSIZE)
+        int ID, AT, RunningTime, PRI, MEMSISZE;
+        sscanf(line, "%d %d %d %d %d", &ID, &AT, &RunningTime, &PRI, &MEMSIZE);
+        processQueue[i++] = initializeProcess(ID, AT, RunningTime, PRI,MEMSIZE)
         testerfunction(&processQueue[i - 1]);
     }
     fclose(f);
     i = 0;
     char *SchedParam[4]; // Array to hold the parameters of the scheduler
     SchedParam[0] = argv[2];
-    // switch (SchedAlgo){ //Choose the scheduling algorithm
-    //     case 1:
-    //         SchedParam[0] = "1";
-    //         break;
-    //     case 2:
-    //         SchedParam[0] = "2";
-    //         break;
-    //     case 3:
-    //         SchedParam[0] = "3";
-    //         break;
-    //     default:
-    //         perror("Invalid Scheduling Algorithm");
-    //         return -1;
-    //         break;
-    // }
-    // Convert the number of processes to string
     char numOfProc[10];
     sprintf(numOfProc, "%d", numOfProcesses);
     SchedParam[1] = numOfProc;
     SchedParam[2] = argv[3];
-    // Convert the Round Robin Quantum to string
-    // char RRQuantum[10];
-    //  if(RR_Quantum == 0){ SchedParam[2] = "0"; }
-    //  else{sprintf(RRQuantum,"%d",RR_Quantum); SchedParam[2] = RRQuantum;}
     SchedParam[3] = NULL;
     // Fork the clock process
     pid_t Clock = fork();

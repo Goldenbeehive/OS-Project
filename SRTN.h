@@ -135,7 +135,7 @@ bool ReceiveProcess(struct MinHeap *minHeap, int ReadyQueueID)
  */
 void SRTN(int noOfProcesses)
 {
-    printf("STRN Running\n");
+    printf("SRTN Running\n");
     key_t runningProcKey = ftok("keys/Guirunningman", 'A');
     int runningID = shmget(runningProcKey, 4, IPC_CREAT | 0644);
     if ((long)runningID == -1)

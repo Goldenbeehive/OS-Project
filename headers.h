@@ -107,19 +107,20 @@ struct msgbuff
  * @param memsize The memory that the process needs.
  * @return struct process* returns a pointer to the process created
  */
-struct process initializeProcess(int id, int arrivaltime, int runningtime, int priority) {
+struct process initializeProcess(int id, int arrivaltime, int runningtime, int priority,int memsize) {
     struct process p;
     p.id = id;
     p.arrivaltime = arrivaltime;
     p.runningtime = runningtime; // Corrected bursttime assignment
     p.priority = priority;
     p.remainingtime = runningtime;
+    p.memsize = memsize;
     p.flag = 0;
     return p;
 }
 
 void testerfunction(struct process* p){
-    printf("%d %d %d %d %d",p->id,p->arrivaltime,p->runningtime,p->remainingtime,p->priority);
+    printf("%d %d %d %d %d %d",p->id,p->arrivaltime,p->runningtime,p->remainingtime,p->priority,p->memsize);
     printf("\n");
 }
 
@@ -235,6 +236,17 @@ void destroySync(bool delete)
         key_t key = ftok("keys/Syncman", 65);
         int Syncid = shmget(key, 4, 0444);
         shmctl(Syncid, IPC_RMID, NULL);
+    }
+}
+
+bool buddysys(int* memoryavailable, int memoryrequired){
+    if (*memoryavailable < memoryrequired){ return false; }
+    if (*memoryavailable > memoryrequired){
+        int memcpy = *memoryavailable;
+        while (memcpy > memoryrequired){ memcpy /= 2; }
+        if (memcpy == 0) {return false; }
+        *memoryavailable -= 2 * memcpy;
+        return true;
     }
 }
 

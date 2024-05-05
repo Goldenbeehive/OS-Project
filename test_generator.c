@@ -9,6 +9,7 @@ struct processData
     int priority;
     int runningtime;
     int id;
+    int memsize;
 };
 
 int main(int argc, char * argv[])
@@ -22,7 +23,7 @@ int main(int argc, char * argv[])
     no =atoi(argv[1]);
     srand(time(null));
     //fprintf(pFile,"%d\n",no);
-    fprintf(pFile, "#id arrival runtime priority\n");
+    fprintf(pFile, "#id arrival runtime priority memsize\n");
     pData.arrivaltime = 1;
     for (int i = 1 ; i <= no ; i++)
     {
@@ -30,9 +31,10 @@ int main(int argc, char * argv[])
         //[min-max] = rand() % (max_number + 1 - minimum_number) + minimum_number
         pData.id = i;
         pData.arrivaltime += rand() % (11);  
-        pData.runningtime = rand() % (30) +1;
+        pData.runningtime = rand() % (30) + 1;
         pData.priority = rand() % (11);
-        fprintf(pFile, "%d\t%d\t%d\t%d\n", pData.id, pData.arrivaltime, pData.runningtime, pData.priority);
+        pData.memsize = rand() % (255) + 2;
+        fprintf(pFile, "%d\t%d\t%d\t%d\t%d\n", pData.id, pData.arrivaltime, pData.runningtime, pData.priority,pData.memsize);
     }
     fclose(pFile);
 }
