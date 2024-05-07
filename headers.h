@@ -98,21 +98,23 @@ void ClearMemory(struct Node* root)
     free(root);
 }
 
-bool AllocateMemory(struct Node* root, int memrequired) {
+bool AllocateMemory(struct Node* root, int memrequired,struct process p) {
     if (root == NULL) { return false; }
     if (root->taken || root->memorysize < memrequired) { return false; }
     if (root->left) { if (root->left->taken && root->right->taken) {return false; } }
     if (root->memorysize == memrequired) {
         if (root->taken) { return false; }
         root->taken = true;
+        p.mem = root;
         printf("Memory size: %d, Taken: %d\n", root->memorysize, root->taken);
         return true;
     }
     if (root->memorysize >= memrequired) {
-        if (AllocateMemory(root->left, memrequired)) { return true; }
-        else if (AllocateMemory(root->right, memrequired)) { return true; }
+        if (AllocateMemory(root->left, memrequired,p)) { return true; }
+        else if (AllocateMemory(root->right, memrequired,p)) { return true; }
         else {
             root->taken = true;
+            p.mem = root;
             printf("Memory size: %d, Taken: %d\n", root->memorysize, root->taken);
             return true;
         }
@@ -127,7 +129,15 @@ void PrintMemory(struct Node* root)
     PrintMemory(root->left);
     PrintMemory(root->right);
 }
+bool DeAllocateMemory(struct process p){
+    if (p.mem->taken){ 
+        p.mem->taken = false; 
+        //Add file function here    
+        return true;
+    }
+    else { return false; }
 
+}
 // This is our process struct, it encapsulates all the necessary data to describe a process
 struct process
 {
@@ -145,6 +155,7 @@ struct process
     int turnaroundtime;
     int lasttime;
     int flag;
+    struct Node *mem;
 };
 struct msg
 {
@@ -174,6 +185,7 @@ struct process initializeProcess(int id, int arrivaltime, int runningtime, int p
     p.remainingtime = runningtime;
     p.memsize = memsize;
     p.flag = 0;
+    p.mem = NULL;
     return p;
 }
 
