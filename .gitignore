@@ -7,6 +7,10 @@ test.c
 *.o
 test.c
 test
+tester.c
+tester.out
+scheduler.perf
+scheduler.log
 minHeap.h
 processtesting.c
 processtesting
