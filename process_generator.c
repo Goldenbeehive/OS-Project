@@ -25,24 +25,16 @@ int main(int argc, char *argv[])
     numOfProcesses = getnoOfProcesses(f);
     skipLine(f);
     int i = 0;
-    // int SchedAlgo,RR_Quantum = 0,
-    // printf("Enter the scheduling algorithm you want: (1 for Round Robin, 2 for SRTN, 3 for HPF) "); //Choose the algorithm
-    // scanf("%d", &SchedAlgo);
-    //  if (SchedAlgo == 1){
-    //      while (RR_Quantum <= 0){
-    //          printf("Enter your Round Robin Quantum: ");
-    //          scanf("%d",&RR_Quantum);
-    //      }
-    //  }
+
     // Initialize the process queue
     processQueue = (struct process *)malloc(numOfProcesses * sizeof(struct process));
     char line[MAX_SIZE];
     // Read the processes from the file
     while (fgets(line, sizeof(line), f) != NULL)
     {
-        int ID, AT, RunningTime, PRI, MEMSISZE;
+        int ID, AT, RunningTime, PRI, MEMSIZE;
         sscanf(line, "%d %d %d %d %d", &ID, &AT, &RunningTime, &PRI, &MEMSIZE);
-        processQueue[i++] = initializeProcess(ID, AT, RunningTime, PRI,MEMSIZE)
+        processQueue[i++] = initializeProcess(ID, AT, RunningTime, PRI,MEMSIZE);
         testerfunction(&processQueue[i - 1]);
     }
     fclose(f);

@@ -79,13 +79,9 @@ void LogFinished(struct process proc, int noOfProcesses, int *runningTimeSum, fl
  * @return true
  * @return false
  */
-bool ReceiveProcessHPF(struct MinHeap *minHeap, int ReadyQueueID)
+bool ReceiveProcessHPF(struct MinHeap *minHeap, int ReadyQueueID, struct Nodemem* root, struct process Waiting[], int *iterator,int* totalmemory,FILE* f)
 {
     struct process ArrivedProcess;
-    struct timespec req;
-    req.tv_sec = 0;
-    req.tv_nsec = 1;  
-    nanosleep(&req, NULL);
     int received = msgrcv(ReadyQueueID, &ArrivedProcess, sizeof(ArrivedProcess), 0, IPC_NOWAIT);
     if (received != -1)
     {
@@ -99,7 +95,16 @@ bool ReceiveProcessHPF(struct MinHeap *minHeap, int ReadyQueueID)
             execv(args[0], args);
         }
         ArrivedProcess.pid = pid;
-        insertHPF(minHeap, ArrivedProcess);
+        if (AllocateMemory(root, ArrivedProcess.memsize, &ArrivedProcess,totalmemory,f))
+        {
+            insertHPF(minHeap, ArrivedProcess);
+            printf("Inserted process with id %d\n", ArrivedProcess.id);
+        }
+        else
+        {
+            Waiting[*iterator] = ArrivedProcess;
+            *iterator = *iterator + 1;
+        }
         return true;
     }
     return false;
@@ -112,6 +117,7 @@ bool ReceiveProcessHPF(struct MinHeap *minHeap, int ReadyQueueID)
  */
 void HPF(int noOfProcesses)
 {
+    FILE* f = fopen("memory.log","w");
     printf("HPF Running");
     key_t runningProcKey = ftok("keys/Guirunningman", 'A');
     int runningID = shmget(runningProcKey, 4, IPC_CREAT | 0644);
@@ -145,9 +151,12 @@ void HPF(int noOfProcesses)
     float TAArray[noOfProcesses];
     int TAArrayIndex = 0;
     int runningTimeSum = 0;
+    int iterator = 0,totalmemory = 1024;
     float WTASum = 0.0f;
     int waitingTimeSum = 0;
     int remainingProcesses = noOfProcesses;
+    struct Nodemem* root = InitialiseMemory(totalmemory,true);
+    struct process* Waiting = malloc(sizeof(struct process)*noOfProcesses);
     struct MinHeap *minHeap = createMinHeap(noOfProcesses);
     int ReadyQueueID, SendQueueID, ReceiveQueueID;
     DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
@@ -160,7 +169,7 @@ void HPF(int noOfProcesses)
         clk = getClk();
         printf("Current clock = %d\n", clk);
         while(getSync() == 0);
-        while (ReceiveProcessHPF(minHeap, ReadyQueueID));
+        while (ReceiveProcessHPF(minHeap, ReadyQueueID,root,Waiting,&iterator,&totalmemory,f));
         if (minHeap->heap_size > 0)
         {
             if (firstarrived)
@@ -181,8 +190,10 @@ void HPF(int noOfProcesses)
                 LogFinished(currentProcess, noOfProcesses, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex,deadProcess);
                 Remove(minHeap, currentProcess);
                 struct process Terminated = currentProcess;
+                DeAllocateMemory(&Terminated,&totalmemory,f);
                 remainingProcesses--;
                 wait(NULL);
+                CheckAllocation(minHeap,root,&iterator,Waiting,&totalmemory,f);
                 if (minHeap->heap_size != 0)
                 {
                     currentProcess = getMin(minHeap);
@@ -226,4 +237,7 @@ void HPF(int noOfProcesses)
     shmdt(runningProcess);
     shmdt(deadProcess);
     destroy(minHeap);
+    free(Waiting);
+    ClearMemory(root);
+    fclose(f);
 }

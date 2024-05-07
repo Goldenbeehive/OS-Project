@@ -223,4 +223,33 @@ void insertHPF(struct MinHeap* minHeap, struct process k)
         i = parent(i);
     }
 }
+
+/**
+ * @brief Checks if process can be allocated
+ * 
+ * @param minHeap  The min heap of processes
+ * @param root  The root of the memory tree
+ * @param iterator  The number of processes in the waiting queue
+ * @param Waiting  The waiting queue
+ * @param f  The file pointer to the log file
+ */
+void CheckAllocation(struct MinHeap* minHeap,struct Nodemem* root,int *iterator,struct process Waiting[],int* totalmemory,FILE* f){
+    printf("Iterator = %d\n",*iterator);
+    while (*iterator != 0){
+        if (AllocateMemory(root,Waiting[0].memsize,&Waiting[0],totalmemory,f)){
+            insertSRTN(minHeap, Waiting[0]);
+            printf("Inserted process with id %d\n", Waiting[0].id);
+            for (int i = 1; i < *iterator; i++)
+            {
+                Waiting[i - 1] = Waiting[i];
+            }
+            *iterator -= 1;  
+            printf("Iterator = %d\n",*iterator);
+        }
+        else{
+            printf("Could not allocate memory for process %d with memory %d\n",Waiting[0].id,Waiting[0].memsize);
+            break;
+        }
+    }
+}
 #endif // MINHEAP_H

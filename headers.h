@@ -71,73 +71,6 @@ void destroyClk(bool terminateAll)
     }
 }
 
-struct Node
-{
-    int memorysize;
-    bool taken;
-    struct Node *left;
-    struct Node *right;
-};
-
-struct Node* InitialiseMemory(int memavailable)
-{
-    if (memavailable < 2) { return NULL; }
-    struct Node *root = malloc(sizeof(struct Node));
-    root->memorysize = memavailable;
-    root->taken = false;
-    root->left = InitialiseMemory(memavailable / 2);
-    root->right = InitialiseMemory(memavailable / 2);
-    return root;
-}
-
-void ClearMemory(struct Node* root)
-{
-    if (root == NULL) { return; }
-    ClearMemory(root->left);
-    ClearMemory(root->right);
-    free(root);
-}
-
-bool AllocateMemory(struct Node* root, int memrequired,struct process p) {
-    if (root == NULL) { return false; }
-    if (root->taken || root->memorysize < memrequired) { return false; }
-    if (root->left) { if (root->left->taken && root->right->taken) {return false; } }
-    if (root->memorysize == memrequired) {
-        if (root->taken) { return false; }
-        root->taken = true;
-        p.mem = root;
-        printf("Memory size: %d, Taken: %d\n", root->memorysize, root->taken);
-        return true;
-    }
-    if (root->memorysize >= memrequired) {
-        if (AllocateMemory(root->left, memrequired,p)) { return true; }
-        else if (AllocateMemory(root->right, memrequired,p)) { return true; }
-        else {
-            root->taken = true;
-            p.mem = root;
-            printf("Memory size: %d, Taken: %d\n", root->memorysize, root->taken);
-            return true;
-        }
-    }
-    return false;
-}
-
-void PrintMemory(struct Node* root)
-{
-    if (root == NULL) { return; }
-    printf("Memory size: %d, Taken: %d\n", root->memorysize, root->taken);
-    PrintMemory(root->left);
-    PrintMemory(root->right);
-}
-bool DeAllocateMemory(struct process p){
-    if (p.mem->taken){ 
-        p.mem->taken = false; 
-        //Add file function here    
-        return true;
-    }
-    else { return false; }
-
-}
 // This is our process struct, it encapsulates all the necessary data to describe a process
 struct process
 {
@@ -155,7 +88,8 @@ struct process
     int turnaroundtime;
     int lasttime;
     int flag;
-    struct Node *mem;
+    int memsize;
+    struct Nodemem *mem;
 };
 struct msg
 {
@@ -309,17 +243,133 @@ void destroySync(bool delete)
     }
 }
 
-bool buddysys(int* memoryavailable, int memoryrequired){
-    if (*memoryavailable < memoryrequired){ return false; }
-    if (*memoryavailable > memoryrequired){
-        int memcpy = *memoryavailable;
-        while (memcpy > memoryrequired){ memcpy /= 2; }
-        if (memcpy == 0) {return false; }
-        *memoryavailable -= 2 * memcpy;
-        return true;
-    }
+struct Nodemem
+{
+    int memorysize;
+    bool taken,isLeft;
+    struct Nodemem *left;
+    struct Nodemem *right;
+};
+
+/**
+ * @brief  Initialize the memory tree
+ * 
+ * @param memavailable  The memory available
+ * @return struct Nodemem*  The root of the memory tree
+ */
+struct Nodemem* InitialiseMemory(int memavailable,bool isLeft)
+{
+    if (memavailable < 2) { return NULL; }
+    struct Nodemem *root = malloc(sizeof(struct Nodemem));
+    root->memorysize = memavailable;
+    root->taken = false;
+    root->isLeft = isLeft;
+    root->left = InitialiseMemory(memavailable / 2,true);
+    root->right = InitialiseMemory(memavailable / 2,false);
+    return root;
 }
 
-bool buddysystry2(int memoryrequired){}
+/**
+ * @brief  Clear the memory tree
+ * 
+ * @param root  The root of the memory tree
+ */
+void ClearMemory(struct Nodemem* root)
+{
+    if (root == NULL) { return; }
+    ClearMemory(root->left);
+    ClearMemory(root->right);
+    free(root);
+}
+
+/**
+ * @brief  Allocate memory for a process
+ * 
+ * @param root  The root of the memory tree
+ * @param memrequired  The memory required by the process
+ * @param p  The process that needs the memory
+ * @param f  The file pointer to the log file
+ * @return true 
+ * @return false 
+ */
+bool AllocateMemory(struct Nodemem* root, int memrequired,struct process* p,int* totalmemory,FILE* f) {
+    if (root == NULL) { return false; }
+    if (root->taken || *totalmemory < memrequired) { return false; }
+    if (root->memorysize == memrequired) {
+        if (root->left) { if (root->left->taken || root->right->taken) { return false; } }
+        if (root->taken) { return false; }
+        root->taken = true;
+        p->mem = root;
+        int memstart,memend;
+        if (root->isLeft){ 
+            memstart = 0;
+            memend = root->memorysize-1;
+        }
+        else { 
+            memstart = root->memorysize;
+            memend = root->memorysize*2-1;
+        }
+        *totalmemory -= root->memorysize;
+        fprintf(f,"At time %d allocated %d bytes for process %d from %d to %d\n",getClk(),root->memorysize,p->id,memstart,memend);
+        return true;
+    }
+    if (root->memorysize > memrequired) {
+        if (AllocateMemory(root->left, memrequired,p,totalmemory,f)) { return true; }
+        else if (AllocateMemory(root->right, memrequired,p,totalmemory,f)) { return true; }
+        else {
+            if (root->left) {  if (root->left->taken || root->right->taken) { return false; }}
+            root->taken = true;
+            p->mem = root;
+            *totalmemory -= root->memorysize;
+            int memstart,memend;
+            if (root->isLeft){ 
+            memstart = 0;
+            memend = root->memorysize-1;
+            }
+            else { 
+            memstart = root->memorysize;
+            memend = root->memorysize*2-1;
+            }
+            fprintf(f,"At time %d allocated %d bytes for process %d from %d to %d\n",getClk(),p->memsize,p->id,memstart,memend);
+            return true;
+        }
+    }
+    return false;
+}
+
+void PrintMemory(struct Nodemem* root)
+{
+    if (root == NULL) { return; }
+    printf("Memory size: %d, Taken: %d\n", root->memorysize, root->taken);
+    PrintMemory(root->left);
+    PrintMemory(root->right);
+}
+/**
+ * @brief  Deallocate memory for a process
+ * 
+ * @param p  The process that needs the memory
+ * @param f  The file pointer to the log file
+ * @return true
+ * @return false
+ */
+bool DeAllocateMemory(struct process* p,int* totalmemory,FILE* f){
+    if (p->mem->taken){ 
+        p->mem->taken = false; 
+        *totalmemory += p->mem->memorysize;
+        int memstart,memend;
+        if (p->mem->isLeft) { 
+            memstart = 0;
+            memend = p->mem->memorysize-1;
+        }
+        else { 
+            memstart = p->mem->memorysize;
+            memend = p->mem->memorysize*2-1;
+        }
+        fprintf(f,"At time %d freed %d bytes for process %d from %d to %d\n",getClk(),p->memsize,p->id,memstart,memend);
+        return true;
+    }
+    else { return false; }
+}
+
 
 #endif // HEADERS_H
