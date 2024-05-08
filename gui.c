@@ -27,6 +27,15 @@ int clkid;
 int clkFound = 0;
 float cpu_utilization = 0.0f, avg_wta = 0.0f, avg_waiting = 0.0f, std_wta = 0.0f;
 
+struct Nodemem
+{
+    int memorysize;
+    bool taken,isLeft;
+    struct Nodemem *left;
+    struct Nodemem *right;
+};
+
+
 struct process
 {
     int id;
@@ -43,6 +52,8 @@ struct process
     int turnaroundtime;
     int lasttime;
     int flag;
+    int memsize;
+    struct Nodemem* mem;
 };
 int isInteger(const char *str)
 {
@@ -152,10 +163,13 @@ int main(void)
     int listViewActive = -1;
     int listViewScrollIndex2 = 0;
     int listViewActive2 = -1;
+    int listViewScrollIndex3 = 0;
+    int listViewActive3 = -1;
     char rdyList[5000] = "";
     pid_t ProcessGen;
     char doneList[5000] = "";
     char workingList[1024] = "n/a";
+    char memList[5000] = "";
 
     /*  Page List:
         0 -> Title Page
@@ -223,13 +237,18 @@ int main(void)
         {
             addProcess(ArrivedProcess, &rdyindex, rdyProcList);
             clearCharArray(rdyList, 5000);
+            clearCharArray(memList, 5000);
             for (int i = 0; i < rdyindex; i++)
             {
+                char temp[1000];
+                if (true){//rdyProcList[i].mem->taken){
+                    sprintf(temp, "P%d - %d bytes;", rdyProcList[i].id,rdyProcList[i].memsize);
+                    strcat(memList, temp);
+                }
                 if (rdyProcList[i].id == *runningProcess)
                 {
                     continue;
                 }
-                char temp[1000];
                 sprintf(temp, "P%d;", rdyProcList[i].id);
                 strcat(rdyList, temp);
             }
@@ -240,13 +259,18 @@ int main(void)
             sprintf(workingList, "P%i", *runningProcess);
 
             clearCharArray(rdyList, 5000);
+            clearCharArray(memList, 5000);
             for (int i = 0; i < rdyindex; i++)
             {
+                char temp[1000];
+                if (true){//rdyProcList[i].mem->taken){
+                    sprintf(temp, "P%d - %d bytes;", rdyProcList[i].id,rdyProcList[i].memsize);
+                    strcat(memList, temp);
+                }
                 if (rdyProcList[i].id == *runningProcess)
                 {
                     continue;
                 }
-                char temp[1000];
                 sprintf(temp, "P%d;", rdyProcList[i].id);
                 strcat(rdyList, temp);
             }
@@ -490,7 +514,8 @@ int main(void)
             GuiGroupBox((Rectangle){screenWidth - 550, 150, 400, 300}, "RDY Queue");
             GuiListView((Rectangle){screenWidth - 550, 150 + 20, 400, 300}, rdyList, &listViewScrollIndex2, &listViewActive2);
             GuiGroupBox((Rectangle){screenWidth - 550, 500, 400, 200}, "Memory");
-            DrawText("MEM WIP", screenWidth - 550 + 150, 590, 20, RED);
+            GuiListView((Rectangle){screenWidth - 550, 500 + 20, 400, 200}, memList, &listViewScrollIndex3, &listViewActive3);
+            //DrawText("MEM WIP", screenWidth - 550 + 150, 590, 20, RED);
         }
         if (pageShifter == 3)
         {

@@ -254,8 +254,9 @@ struct Nodemem
 /**
  * @brief  Initialize the memory tree
  * 
- * @param memavailable  The memory available
- * @return struct Nodemem*  The root of the memory tree
+ * @param memavailable  The total memory available
+ * @param isLeft  A boolean to indicate if the current node is a left node
+ * @return struct Nodemem* 
  */
 struct Nodemem* InitialiseMemory(int memavailable,bool isLeft)
 {
@@ -288,6 +289,7 @@ void ClearMemory(struct Nodemem* root)
  * @param root  The root of the memory tree
  * @param memrequired  The memory required by the process
  * @param p  The process that needs the memory
+ * @param totalmemory  The total memory available
  * @param f  The file pointer to the log file
  * @return true 
  * @return false 
@@ -344,13 +346,15 @@ void PrintMemory(struct Nodemem* root)
     PrintMemory(root->left);
     PrintMemory(root->right);
 }
+
 /**
  * @brief  Deallocate memory for a process
  * 
  * @param p  The process that needs the memory
+ * @param totalmemory  The total memory available
  * @param f  The file pointer to the log file
- * @return true
- * @return false
+ * @return true 
+ * @return false 
  */
 bool DeAllocateMemory(struct process* p,int* totalmemory,FILE* f){
     if (p->mem->taken){ 
