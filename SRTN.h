@@ -2,6 +2,7 @@
 #include "headers.h"
 #include <math.h>
 #include "time.h"
+
 /**
  * @brief Clears the contents of the log file named "scheduler.log"
  *
@@ -106,23 +107,30 @@ void LogFinishedSRTN(struct process *proc, int noOfProcesses, int *runningTimeSu
  * @return true
  * @return false
  */
-bool ReceiveProcess(struct MinHeap *minHeap, int ReadyQueueID)
+bool ReceiveProcess(struct MinHeap *minHeap, int ReadyQueueID, struct Nodemem* root,struct process Waiting[],int* iterator,int* totalmemory,FILE* f,int GUIID)
 {
     struct process ArrivedProcess;
     int received = msgrcv(ReadyQueueID, &ArrivedProcess, sizeof(ArrivedProcess), 0, IPC_NOWAIT);
     if (received != -1)
     {
         printf("Process with id %d has arrived\n", ArrivedProcess.id);
-        char RunningTimeStr[12];
-        sprintf(RunningTimeStr, "%d", ArrivedProcess.runningtime);
-        char *args[3] = {"./process.out", RunningTimeStr, NULL};
-        pid_t pid = fork();
-        if (pid == 0)
-        {
-            execv(args[0], args);
+        if (AllocateMemory(root,ArrivedProcess.memsize,&ArrivedProcess,totalmemory)){ 
+            msgsnd(GUIID, &ArrivedProcess, sizeof(ArrivedProcess), IPC_NOWAIT);
+            char RunningTimeStr[12];
+            sprintf(RunningTimeStr, "%d", ArrivedProcess.runningtime);
+            char *args[3] = {"./process.out", RunningTimeStr, NULL};
+            pid_t pid = fork();
+            if (pid == 0) {execv(args[0], args); }
+            ArrivedProcess.pid = pid;
+            printf("At time %d allocated %d bytes for process %d\n",getClk(),ArrivedProcess.memsize,ArrivedProcess.id);
+            MemoryLogger(1,root,&ArrivedProcess,f);
+            insertSRTN(minHeap, ArrivedProcess);
         }
-        ArrivedProcess.pid = pid;
-        insertSRTN(minHeap, ArrivedProcess);
+        else { 
+            printf("Could not allocate memory for process %d with memory %d\n",ArrivedProcess.id,ArrivedProcess.memsize);
+            Waiting[*iterator] = ArrivedProcess;
+            *iterator += 1;
+        }
         return true;
     }
     return false;
@@ -135,6 +143,7 @@ bool ReceiveProcess(struct MinHeap *minHeap, int ReadyQueueID)
  */
 void SRTN(int noOfProcesses)
 {
+    FILE* f = fopen("memory.log","w");
     printf("SRTN Running\n");
     key_t runningProcKey = ftok("keys/Guirunningman", 'A');
     int runningID = shmget(runningProcKey, 4, IPC_CREAT | 0644);
@@ -166,14 +175,17 @@ void SRTN(int noOfProcesses)
     *deadProcess = -1;
     float TAArray[noOfProcesses];
     int TAArrayIndex = 0;
+    int iterator = 0,totalmemory = 1024;
     int runningTimeSum = 0;
     float WTASum = 0.0f;
     int waitingTimeSum = 0;
     clearLogFileSRTN();
     int remainingProcesses = noOfProcesses;
+    struct Nodemem* root = InitialiseMemory(totalmemory,1);
     struct MinHeap *minHeap = createMinHeap(noOfProcesses);
-    int ReadyQueueID, SendQueueID, ReceiveQueueID;
-    DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
+    struct process* Waiting = malloc(sizeof(struct process)*noOfProcesses);
+    int ReadyQueueID, SendQueueID, ReceiveQueueID,GUIID,ArrivedProcessesID;
+    DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID,&GUIID,&ArrivedProcessesID);
     initSync();
     struct process *keeper = NULL;
     int clk = 0;
@@ -183,14 +195,10 @@ void SRTN(int noOfProcesses)
         struct process *currentProcess = NULL, tmp;
 
         printf("Current clock = %d\n", clk);
-        while (getSync() == 0)
-        {
-        }
-        while (ReceiveProcess(minHeap, ReadyQueueID))
-            ;
+        while (getSync() == 0);
+        while (ReceiveProcess(minHeap, ReadyQueueID,root,Waiting,&iterator,&totalmemory,f,GUIID));
         if (minHeap->heap_size > 0)
         {
-
             currentProcess = getMin_ptr(minHeap);
             if (keeper == NULL)
             {
@@ -204,12 +212,7 @@ void SRTN(int noOfProcesses)
                 LogStartedSRTN(currentProcess, runningProcess);
                 *keeper = *currentProcess;
             }
-
             struct msgbuff receivedmsg;
-            struct timespec req;
-            req.tv_sec = 0;
-            req.tv_nsec = 1;
-            nanosleep(&req, NULL);
             int received = msgrcv(ReceiveQueueID, &receivedmsg, sizeof(receivedmsg.msg), 0, IPC_NOWAIT);
             if (received != -1)
             {
@@ -221,13 +224,17 @@ void SRTN(int noOfProcesses)
                 printf("Process with ID: %d has finished\n", currentProcess->id);
                 LogFinishedSRTN(currentProcess, noOfProcesses, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex,deadProcess);
                 struct process Terminated = extractMin(minHeap, 1);
+                MemoryLogger(0,root,&Terminated,f);
+                DeAllocateMemory(&Terminated,&totalmemory);
                 remainingProcesses--;
                 wait(NULL);
+                CheckAllocation(1,minHeap,root,&iterator,Waiting,&totalmemory,f,GUIID);
                 if (minHeap->heap_size != 0)
                 {
                     currentProcess = getMin_ptr(minHeap);
                     LogStartedSRTN(currentProcess, runningProcess);
                     *keeper = *currentProcess;
+                    
                 }
             }
             if (minHeap->heap_size == 0)
@@ -266,4 +273,7 @@ void SRTN(int noOfProcesses)
     shmdt(runningProcess);
     shmdt(deadProcess);
     destroy(minHeap);
+    ClearMemory(root);
+    free(Waiting);
+    fclose(f);
 }

@@ -4,6 +4,39 @@
 #include "CircularList.h"
 #include <math.h>
 #include"time.h"
+
+/**
+ * @brief  Checks if memory allocation for a process is possible
+ * 
+ * @param List 
+ * @param root 
+ * @param iterator 
+ * @param Waiting 
+ * @param totalmemory 
+ * @param f 
+ */
+void CheckAllocationRR(struct CircularList* List,struct Nodemem* root,int *iterator,struct process Waiting[],int* totalmemory,FILE* f,int GUIID){
+    //printf("Iterator = %d\n",*iterator);
+    while (*iterator != 0){
+        if (AllocateMemory(root,Waiting[0].memsize,&Waiting[0],totalmemory)){
+            msgsnd(GUIID, &Waiting[0], sizeof(Waiting[0]), IPC_NOWAIT);
+            insertAtEnd(List,Waiting[0]);
+            MemoryLogger(1,root,&Waiting[0],f);
+            printf("Inserted process with id %d\n", Waiting[0].id);
+            for (int i = 1; i < *iterator; i++)
+            {
+                Waiting[i - 1] = Waiting[i];
+            }
+            *iterator -= 1;  
+            printf("Iterator = %d\n",*iterator);
+        }
+        else{
+            printf("Could not allocate memory for process %d with memory %d\n",Waiting[0].id,Waiting[0].memsize);
+            break;
+        }
+    }
+}
+
 /**
  * @brief Clears the contents of the log file named "scheduler.log"
  *
@@ -95,6 +128,7 @@ void LogFinishedRR(struct process proc, int noOfProcesses, int *runningTimeSum, 
 }
 void RoundRobin(int quantum, int processCount)
 {
+    FILE* f = fopen("memory.log","w");
     printf("Round Robin Scheduler\n");
     key_t runningProcKey = ftok("keys/Guirunningman", 'A');
     int runningID = shmget(runningProcKey, 4, IPC_CREAT | 0644);
@@ -128,6 +162,7 @@ void RoundRobin(int quantum, int processCount)
     float TAArray[processCount];
     int TAArrayIndex = 0;
     int runningTimeSum = 0;
+    int iterator = 0, totalmemory = 1024;
     float WTASum = 0.0f;
     int waitingTimeSum = 0;
     int HasStartedArray[processCount + 1];
@@ -137,11 +172,13 @@ void RoundRobin(int quantum, int processCount)
     }
         initSync();
     // Initialize Ready queue to receive processes from process generator
-    int ReadyQueueID, SendQueueID, ReceiveQueueID;
-    DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
+    int ReadyQueueID, SendQueueID, ReceiveQueueID,GUIID,ArrivedProcessesID;
+    DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID,&GUIID,&ArrivedProcessesID);
     int quantumCounter = 0;
     int remainingProcesses = processCount;
     struct CircularList *Running_List = createCircularList();
+    struct process* Waiting = malloc(sizeof(struct process)*processCount);
+    struct Nodemem* root = InitialiseMemory(totalmemory,1);
     int clk = 0;
     // Main processing loop, keeps running until all processes are finished
     while (remainingProcesses > 0)
@@ -166,26 +203,35 @@ void RoundRobin(int quantum, int processCount)
             {
                 // If process was received, add it to the running list and Fork it to start its execution
                 printf("Process with ID: %d has arrived\n", rec.id);
-                pid_t pid = fork();
-                if (pid == -1)
-                {
-                    // Fork failed
-                    perror("fork");
+                if (AllocateMemory(root,rec.memsize,&rec,&totalmemory)){
+                    msgsnd(GUIID, &rec, sizeof(rec), IPC_NOWAIT);
+                    pid_t pid = fork();
+                    if (pid == -1)
+                    {
+                        // Fork failed
+                        perror("fork");
+                    }
+                    if (pid == 0)
+                    {
+                        // This is the code executed by the child, which will be replaced by the process
+                        char RunningTimeStr[20]; // Assuming 20 characters is enough for the string representation of currentProcess.runningtime
+                        sprintf(RunningTimeStr, "%d", rec.runningtime);
+                        // printf("I'm child, my time is %s\n", RunningTimeStr);
+                        char *args[] = {"./process.out", RunningTimeStr, NULL, NULL}; // NULL terminator required for the args array
+                        execv(args[0], args);
+                        // If execv returns, it means there was an error
+                        perror("execv");
+                        exit(EXIT_FAILURE); // Exit child process with failure
+                    }
+                    rec.pid = pid; // Assign the PID of the child process to the process struct
+                    insertAtEnd(Running_List, rec);
+                    MemoryLogger(1,root,&rec,f);
+                    displayList(Running_List);
                 }
-                if (pid == 0)
-                {
-                    // This is the code executed by the child, which will be replaced by the process
-                    char RunningTimeStr[20]; // Assuming 20 characters is enough for the string representation of currentProcess.runningtime
-                    sprintf(RunningTimeStr, "%d", rec.runningtime);
-                    // printf("I'm child, my time is %s\n", RunningTimeStr);
-                    char *args[] = {"./process.out", RunningTimeStr, NULL, NULL}; // NULL terminator required for the args array
-                    execv(args[0], args);
-                    // If execv returns, it means there was an error
-                    perror("execv");
-                    exit(EXIT_FAILURE); // Exit child process with failure
+                else{
+                    Waiting[iterator] = rec;
+                    iterator++;
                 }
-                rec.pid = pid; // Assign the PID of the child process to the process struct
-                insertAtEnd(Running_List, rec);
                 displayList(Running_List);
             }
             else
@@ -213,11 +259,14 @@ void RoundRobin(int quantum, int processCount)
                     LogFinishedRR(p, processCount, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex,deadProcess);
                     struct process Terminated;
                     removeCurrent(Running_List, &Terminated);
+                    MemoryLogger(0,root,&Terminated,f);
+                    DeAllocateMemory(&Terminated,&totalmemory);
                     displayList(Running_List);
                     remainingProcesses--;
                     quantumCounter = 0;
                     // LogStartedRR(Running_List->current->data);
                     wait(NULL);
+                    CheckAllocationRR(Running_List,root,&iterator,Waiting,&totalmemory,f,GUIID);
                 }
             }
             if (quantumCounter == quantum)
@@ -297,5 +346,8 @@ void RoundRobin(int quantum, int processCount)
     shmdt(runningProcess);
     shmdt(deadProcess);
     destroyList(Running_List);
+    free(Waiting);
+    ClearMemory(root);
+    fclose(f);
 }
 #endif

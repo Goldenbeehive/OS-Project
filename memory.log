@@ -1,0 +1,4 @@
+At time 1 allocated 1024 bytes for process 1 from 0 to 1023
+At time 6 freed 1024 bytes for process 1 from 0 to 1023
+At time 6 allocated 226 bytes for process 2 from 0 to 255
+At time 8 freed 226 bytes for process 2 from 0 to 255
