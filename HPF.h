@@ -157,7 +157,7 @@ void HPF(int noOfProcesses)
     float WTASum = 0.0f;
     int waitingTimeSum = 0;
     int remainingProcesses = noOfProcesses;
-    struct Nodemem* root = InitialiseMemory(totalmemory,true);
+    struct Nodemem* root = InitialiseMemory(totalmemory,1);
     struct process* Waiting = malloc(sizeof(struct process)*noOfProcesses);
     struct MinHeap *minHeap = createMinHeap(noOfProcesses);
     int ReadyQueueID, SendQueueID, ReceiveQueueID,GUIID,ArrivedProcessesID;

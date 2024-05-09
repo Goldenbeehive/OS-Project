@@ -178,7 +178,7 @@ void RoundRobin(int quantum, int processCount)
     int remainingProcesses = processCount;
     struct CircularList *Running_List = createCircularList();
     struct process* Waiting = malloc(sizeof(struct process)*processCount);
-    struct Nodemem* root = InitialiseMemory(totalmemory,true);
+    struct Nodemem* root = InitialiseMemory(totalmemory,1);
     int clk = 0;
     // Main processing loop, keeps running until all processes are finished
     while (remainingProcesses > 0)

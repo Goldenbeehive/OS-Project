@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <math.h>
 
 typedef short bool;
 #define true 1
@@ -261,8 +262,8 @@ void destroySync(bool delete)
 
 struct Nodemem
 {
-    int memorysize;
-    bool taken,isLeft;
+    int memorysize,nodenumber;
+    bool taken;
     struct Nodemem *left;
     struct Nodemem *right;
 };
@@ -274,15 +275,15 @@ struct Nodemem
  * @param isLeft  A boolean to indicate if the current node is a left node
  * @return struct Nodemem* 
  */
-struct Nodemem* InitialiseMemory(int memavailable,bool isLeft)
+struct Nodemem* InitialiseMemory(int memavailable,int nodenumber)
 {
-    if (memavailable < 2) { return NULL; }
+    if (memavailable < 1) { return NULL; }
     struct Nodemem *root = malloc(sizeof(struct Nodemem));
+    root->nodenumber = nodenumber;
     root->memorysize = memavailable;
     root->taken = false;
-    root->isLeft = isLeft;
-    root->left = InitialiseMemory(memavailable / 2,true);
-    root->right = InitialiseMemory(memavailable / 2,false);
+    root->left = InitialiseMemory(memavailable / 2,2*nodenumber);
+    root->right = InitialiseMemory(memavailable / 2,2*nodenumber+1);
     return root;
 }
 /**
@@ -321,7 +322,7 @@ void SetChildrenFree(struct Nodemem* root){
 bool CheckifonLeftSide(struct Nodemem* root, struct Nodemem* node) {
     if (root == NULL) {return false; }
     if (root == node) { return true; }
-    return CheckifonLeftSide(root->left, node) || CheckifonLeftSide(root->right, node);
+    return CheckifonLeftSide(root->left, node);
 }
 
 /**
@@ -373,6 +374,7 @@ bool AllocateMemory(struct Nodemem* root, int memrequired,struct process* p,int*
         if (root->taken) { return false; }
         if (CheckMemoryAvailability(root)){
             SetChildrenAsTaken(root);
+            *totalmemory -= root->memorysize;
             p->mem = root;
             return true;
         }
@@ -403,29 +405,12 @@ bool AllocateMemory(struct Nodemem* root, int memrequired,struct process* p,int*
  * @param f  The file pointer to the log file
  */
 void MemoryLogger(bool allocate,struct Nodemem* root, struct process* p,FILE* f){
-    int memstart, memend;
-    bool skip = false;
-    if (root == p->mem) { skip = true; }
-    if (CheckifonLeftSide(root->left,p->mem) || skip){
-        if (p->mem->isLeft){
-            memstart = 0;
-            memend = p->mem->memorysize-1;
-        }
-        else {
-            memstart = p->mem->memorysize;
-            memend = p->mem->memorysize*2-1;
-        }
-    }
-    else {
-        if (p->mem->isLeft){
-            memstart = p->mem->memorysize*2;
-            memend = memstart + p->mem->memorysize-1;
-        }
-        else {
-            memstart = p->mem->memorysize*2 + p->mem->memorysize;
-            memend = memstart + p->mem->memorysize-1;
-        }
-    }
+    if (p->mem == NULL) { return; }
+    struct Nodemem* node = p->mem;
+    int memstart, memend, nodenumber = node->nodenumber;
+    int florida = floor(log2(nodenumber));
+    memstart = (MAX_SIZE/(pow(2,florida+1) - pow(2,florida))) * (nodenumber - pow(2,florida));
+    memend = memstart + node->memorysize - 1;
     if (allocate) { fprintf(f,"At time %d allocated %d bytes for process %d from %d to %d\n",getClk(),p->memsize,p->id,memstart,memend); }
     else { fprintf(f,"At time %d freed %d bytes for process %d from %d to %d\n",getClk(),p->memsize,p->id,memstart,memend); }
 }

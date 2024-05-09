@@ -184,7 +184,7 @@ void SRTN(int noOfProcesses)
     int waitingTimeSum = 0;
     clearLogFileSRTN();
     int remainingProcesses = noOfProcesses;
-    struct Nodemem* root = InitialiseMemory(totalmemory,true);
+    struct Nodemem* root = InitialiseMemory(totalmemory,1);
     struct MinHeap *minHeap = createMinHeap(noOfProcesses);
     struct process* Waiting = malloc(sizeof(struct process)*noOfProcesses);
     int ReadyQueueID, SendQueueID, ReceiveQueueID,GUIID,ArrivedProcessesID;
