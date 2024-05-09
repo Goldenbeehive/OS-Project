@@ -153,13 +153,15 @@ int getnoOfProcesses(FILE* f){
 }
 
 /**
- * @brief  Define the keys for the message queues
+ * @brief 
  * 
  * @param ReadyQueueID  The ID of the Ready Queue
  * @param SendQueueID  The ID of the Send Queue
  * @param ReceiveQueueID  The ID of the Receive Queue
+ * @param GUIID  The ID of the GUI Queue
+ * @param ArrivedProcessesID  The ID of the Arrived Processes Queue
  */
-void DefineKeys(int* ReadyQueueID, int* SendQueueID, int* ReceiveQueueID){
+void DefineKeys(int* ReadyQueueID, int* SendQueueID, int* ReceiveQueueID,int* GUIID,int* ArrivedProcessesID){
     key_t ReadyQueueKey;
     ReadyQueueKey= ftok("keys/Funnyman",'A');
     *ReadyQueueID = msgget(ReadyQueueKey, 0666 | IPC_CREAT);
@@ -182,6 +184,20 @@ void DefineKeys(int* ReadyQueueID, int* SendQueueID, int* ReceiveQueueID){
     ReceiveQueueKey= ftok("keys/Receiveman",'A');
     *ReceiveQueueID = msgget(ReceiveQueueKey, 0666 | IPC_CREAT);
     if (*ReceiveQueueID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+    key_t GUIKey = ftok("keys/Guiman", 'A');
+    *GUIID = msgget(GUIKey, 0666 | IPC_CREAT);
+    if (*GUIID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+    key_t ArrivedProcessesKey = ftok("keys/Guiman",'B');
+    *ArrivedProcessesID = msgget(ArrivedProcessesKey, 0666 | IPC_CREAT);
+    if (*ArrivedProcessesID == -1)
     {
         perror("Error in create message queue");
         exit(-1);
@@ -269,6 +285,61 @@ struct Nodemem* InitialiseMemory(int memavailable,bool isLeft)
     root->right = InitialiseMemory(memavailable / 2,false);
     return root;
 }
+/**
+ * @brief Set the Taken status of a certain node's children as taken
+ * 
+ * @param root  The root of the memory tree
+ */
+void SetChildrenAsTaken(struct Nodemem* root){
+    if (root == NULL) { return; }
+    root->taken = true;
+    SetChildrenAsTaken(root->left);
+    SetChildrenAsTaken(root->right);
+}
+
+/**
+ * @brief Set the Taken status of a certain node's children as free
+ * 
+ * @param root  The root of the memory tree
+ */
+void SetChildrenFree(struct Nodemem* root){
+    if (root == NULL) { return; }
+    root->taken = false;
+    SetChildrenFree(root->left);
+    SetChildrenFree(root->right);
+}
+
+/**
+ * @brief  Check if a node is on the left side of the tree
+ * 
+ * @param root  The root of the memory tree
+ * @param node  The node to check
+ * @param condition Condition that is initially true but set as false if the function starts checking in the right side of the root
+ * @return true 
+ * @return false 
+ */
+bool CheckifonLeftSide(struct Nodemem* root, struct Nodemem* node) {
+    if (root == NULL) {return false; }
+    if (root == node) { return true; }
+    return CheckifonLeftSide(root->left, node) || CheckifonLeftSide(root->right, node);
+}
+
+/**
+ * @brief  Check if memory is available for a process
+ * 
+ * @param root  The root of the memory tree
+ * @return true 
+ * @return false 
+ */
+bool CheckMemoryAvailability(struct Nodemem* root){
+    if (root == NULL) { return false; }
+    if (root->taken) { return false; }
+    if (root->left) { 
+        if (root->left->taken || root->right->taken) { return false; }
+        return CheckMemoryAvailability(root->left) && CheckMemoryAvailability(root->right);
+    }
+    return true;
+}
 
 /**
  * @brief  Clear the memory tree
@@ -294,49 +365,69 @@ void ClearMemory(struct Nodemem* root)
  * @return true 
  * @return false 
  */
-bool AllocateMemory(struct Nodemem* root, int memrequired,struct process* p,int* totalmemory,FILE* f) {
+bool AllocateMemory(struct Nodemem* root, int memrequired,struct process* p,int* totalmemory) {
     if (root == NULL) { return false; }
     if (root->taken || *totalmemory < memrequired) { return false; }
     if (root->memorysize == memrequired) {
         if (root->left) { if (root->left->taken || root->right->taken) { return false; } }
         if (root->taken) { return false; }
-        root->taken = true;
-        p->mem = root;
-        int memstart,memend;
-        if (root->isLeft){ 
-            memstart = 0;
-            memend = root->memorysize-1;
+        if (CheckMemoryAvailability(root)){
+            SetChildrenAsTaken(root);
+            p->mem = root;
+            return true;
         }
-        else { 
-            memstart = root->memorysize;
-            memend = root->memorysize*2-1;
-        }
-        *totalmemory -= root->memorysize;
-        fprintf(f,"At time %d allocated %d bytes for process %d from %d to %d\n",getClk(),root->memorysize,p->id,memstart,memend);
-        return true;
+        return false;
     }
     if (root->memorysize > memrequired) {
-        if (AllocateMemory(root->left, memrequired,p,totalmemory,f)) { return true; }
-        else if (AllocateMemory(root->right, memrequired,p,totalmemory,f)) { return true; }
+        if (AllocateMemory(root->left, memrequired,p,totalmemory)) { return true; }
+        else if (AllocateMemory(root->right, memrequired,p,totalmemory)) { return true; }
         else {
-            if (root->left) {  if (root->left->taken || root->right->taken) { return false; }}
-            root->taken = true;
-            p->mem = root;
-            *totalmemory -= root->memorysize;
-            int memstart,memend;
-            if (root->isLeft){ 
-            memstart = 0;
-            memend = root->memorysize-1;
+            if (CheckMemoryAvailability(root)){
+                SetChildrenAsTaken(root);
+                p->mem = root;
+                *totalmemory -= root->memorysize;
+                return true;
             }
-            else { 
-            memstart = root->memorysize;
-            memend = root->memorysize*2-1;
-            }
-            fprintf(f,"At time %d allocated %d bytes for process %d from %d to %d\n",getClk(),p->memsize,p->id,memstart,memend);
-            return true;
+            return false;
         }
     }
     return false;
+}
+
+/**
+ * @brief Logs the memory allocation and deallocation of a process
+ * 
+ * @param allocate  A boolean to indicate if the process is being allocated or deallocated
+ * @param root  The root of the memory tree
+ * @param p  The process that needs the memory
+ * @param f  The file pointer to the log file
+ */
+void MemoryLogger(bool allocate,struct Nodemem* root, struct process* p,FILE* f){
+    int memstart, memend;
+    bool skip = false;
+    if (root == p->mem) { skip = true; }
+    if (CheckifonLeftSide(root->left,p->mem) || skip){
+        if (p->mem->isLeft){
+            memstart = 0;
+            memend = p->mem->memorysize-1;
+        }
+        else {
+            memstart = p->mem->memorysize;
+            memend = p->mem->memorysize*2-1;
+        }
+    }
+    else {
+        if (p->mem->isLeft){
+            memstart = p->mem->memorysize*2;
+            memend = memstart + p->mem->memorysize-1;
+        }
+        else {
+            memstart = p->mem->memorysize*2 + p->mem->memorysize;
+            memend = memstart + p->mem->memorysize-1;
+        }
+    }
+    if (allocate) { fprintf(f,"At time %d allocated %d bytes for process %d from %d to %d\n",getClk(),p->memsize,p->id,memstart,memend); }
+    else { fprintf(f,"At time %d freed %d bytes for process %d from %d to %d\n",getClk(),p->memsize,p->id,memstart,memend); }
 }
 
 void PrintMemory(struct Nodemem* root)
@@ -356,20 +447,10 @@ void PrintMemory(struct Nodemem* root)
  * @return true 
  * @return false 
  */
-bool DeAllocateMemory(struct process* p,int* totalmemory,FILE* f){
+bool DeAllocateMemory(struct process* p,int* totalmemory){
     if (p->mem->taken){ 
-        p->mem->taken = false; 
+        SetChildrenFree(p->mem);
         *totalmemory += p->mem->memorysize;
-        int memstart,memend;
-        if (p->mem->isLeft) { 
-            memstart = 0;
-            memend = p->mem->memorysize-1;
-        }
-        else { 
-            memstart = p->mem->memorysize;
-            memend = p->mem->memorysize*2-1;
-        }
-        fprintf(f,"At time %d freed %d bytes for process %d from %d to %d\n",getClk(),p->memsize,p->id,memstart,memend);
         return true;
     }
     else { return false; }

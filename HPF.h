@@ -79,7 +79,7 @@ void LogFinished(struct process proc, int noOfProcesses, int *runningTimeSum, fl
  * @return true
  * @return false
  */
-bool ReceiveProcessHPF(struct MinHeap *minHeap, int ReadyQueueID, struct Nodemem* root, struct process Waiting[], int *iterator,int* totalmemory,FILE* f)
+bool ReceiveProcessHPF(struct MinHeap *minHeap, int ReadyQueueID, struct Nodemem* root, struct process Waiting[], int *iterator,int* totalmemory,FILE* f,int GUIID)
 {
     struct process ArrivedProcess;
     int received = msgrcv(ReadyQueueID, &ArrivedProcess, sizeof(ArrivedProcess), 0, IPC_NOWAIT);
@@ -95,8 +95,10 @@ bool ReceiveProcessHPF(struct MinHeap *minHeap, int ReadyQueueID, struct Nodemem
             execv(args[0], args);
         }
         ArrivedProcess.pid = pid;
-        if (AllocateMemory(root, ArrivedProcess.memsize, &ArrivedProcess,totalmemory,f))
+        if (AllocateMemory(root, ArrivedProcess.memsize, &ArrivedProcess,totalmemory))
         {
+            msgsnd(GUIID, &ArrivedProcess, sizeof(ArrivedProcess), IPC_NOWAIT);
+            MemoryLogger(1,root,&ArrivedProcess,f);
             insertHPF(minHeap, ArrivedProcess);
             printf("Inserted process with id %d\n", ArrivedProcess.id);
         }
@@ -158,8 +160,8 @@ void HPF(int noOfProcesses)
     struct Nodemem* root = InitialiseMemory(totalmemory,true);
     struct process* Waiting = malloc(sizeof(struct process)*noOfProcesses);
     struct MinHeap *minHeap = createMinHeap(noOfProcesses);
-    int ReadyQueueID, SendQueueID, ReceiveQueueID;
-    DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
+    int ReadyQueueID, SendQueueID, ReceiveQueueID,GUIID,ArrivedProcessesID;
+    DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID,&GUIID,&ArrivedProcessesID);
     initSync();
     bool firstarrived = true;
     struct process currentProcess;
@@ -169,7 +171,7 @@ void HPF(int noOfProcesses)
         clk = getClk();
         printf("Current clock = %d\n", clk);
         while(getSync() == 0);
-        while (ReceiveProcessHPF(minHeap, ReadyQueueID,root,Waiting,&iterator,&totalmemory,f));
+        while (ReceiveProcessHPF(minHeap, ReadyQueueID,root,Waiting,&iterator,&totalmemory,f,GUIID));
         if (minHeap->heap_size > 0)
         {
             if (firstarrived)
@@ -190,10 +192,11 @@ void HPF(int noOfProcesses)
                 LogFinished(currentProcess, noOfProcesses, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex,deadProcess);
                 Remove(minHeap, currentProcess);
                 struct process Terminated = currentProcess;
-                DeAllocateMemory(&Terminated,&totalmemory,f);
+                MemoryLogger(0,root,&Terminated,f);
+                DeAllocateMemory(&Terminated,&totalmemory);
                 remainingProcesses--;
                 wait(NULL);
-                CheckAllocation(minHeap,root,&iterator,Waiting,&totalmemory,f);
+                CheckAllocation(0,minHeap,root,&iterator,Waiting,&totalmemory,f,GUIID);
                 if (minHeap->heap_size != 0)
                 {
                     currentProcess = getMin(minHeap);

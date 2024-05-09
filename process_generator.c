@@ -2,7 +2,7 @@
 #include "RoundRobin.h"
 int numOfProcesses = 0;
 struct process *processQueue = NULL;
-int ReadyQueueID, SendQueueID, ReceiveQueueID, GUIID;
+int ReadyQueueID, SendQueueID, ReceiveQueueID, GUIID,ArrivedProcessesID;
 pid_t Scheduler ;
 void clearResources(int);
 
@@ -62,25 +62,15 @@ int main(int argc, char *argv[])
     {
         execv("./scheduler.out", SchedParam);
     }
-    key_t GUIKey;
-
-    GUIKey = ftok("keys/Guiman", 'A');
-    GUIID = msgget(GUIKey, 0666 | IPC_CREAT);
-    if (GUIID == -1)
-    {
-        perror("Error in create message queue");
-        exit(-1);
-    }
-    DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
+    DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID,&GUIID,&ArrivedProcessesID);
     while (i < numOfProcesses)
     { // Send the processes to the scheduler according to their arrival time
         setSync(0);
         if (getClk() == processQueue[i].arrivaltime)
         {
             struct process temp = processQueue[i];
-            struct process temp2 = processQueue[i];
             msgsnd(ReadyQueueID, &temp, sizeof(temp), IPC_NOWAIT); // Send the process to the scheduler
-            msgsnd(GUIID, &temp2, sizeof(temp2), IPC_NOWAIT);
+            msgsnd(ArrivedProcessesID, &temp, sizeof(temp), IPC_NOWAIT); // Send the process to the scheduler
             // printf("Process %d sent to scheduler at time = %d\n",processQueue[i].id,processQueue[i].arrivaltime);
             i++;
         }
@@ -110,4 +100,5 @@ void clearResources(int signum)
     msgctl(ReadyQueueID, IPC_RMID, NULL);
     msgctl(SendQueueID, IPC_RMID, NULL);
     msgctl(ReceiveQueueID, IPC_RMID, NULL);
+    msgctl(ArrivedProcessesID, IPC_RMID, NULL);
 }

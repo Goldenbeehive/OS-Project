@@ -107,7 +107,7 @@ void LogFinishedSRTN(struct process *proc, int noOfProcesses, int *runningTimeSu
  * @return true
  * @return false
  */
-bool ReceiveProcess(struct MinHeap *minHeap, int ReadyQueueID, struct Nodemem* root,struct process Waiting[],int* iterator,int* totalmemory,FILE* f)
+bool ReceiveProcess(struct MinHeap *minHeap, int ReadyQueueID, struct Nodemem* root,struct process Waiting[],int* iterator,int* totalmemory,FILE* f,int GUIID)
 {
     struct process ArrivedProcess;
     int received = msgrcv(ReadyQueueID, &ArrivedProcess, sizeof(ArrivedProcess), 0, IPC_NOWAIT);
@@ -123,8 +123,10 @@ bool ReceiveProcess(struct MinHeap *minHeap, int ReadyQueueID, struct Nodemem* r
             execv(args[0], args);
         }
         ArrivedProcess.pid = pid;
-        if (AllocateMemory(root,ArrivedProcess.memsize,&ArrivedProcess,totalmemory,f)){ 
+        if (AllocateMemory(root,ArrivedProcess.memsize,&ArrivedProcess,totalmemory)){ 
+            msgsnd(GUIID, &ArrivedProcess, sizeof(ArrivedProcess), IPC_NOWAIT);
             printf("At time %d allocated %d bytes for process %d\n",getClk(),ArrivedProcess.memsize,ArrivedProcess.id);
+            MemoryLogger(1,root,&ArrivedProcess,f);
             insertSRTN(minHeap, ArrivedProcess);
         }
         else { 
@@ -185,8 +187,8 @@ void SRTN(int noOfProcesses)
     struct Nodemem* root = InitialiseMemory(totalmemory,true);
     struct MinHeap *minHeap = createMinHeap(noOfProcesses);
     struct process* Waiting = malloc(sizeof(struct process)*noOfProcesses);
-    int ReadyQueueID, SendQueueID, ReceiveQueueID;
-    DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID);
+    int ReadyQueueID, SendQueueID, ReceiveQueueID,GUIID,ArrivedProcessesID;
+    DefineKeys(&ReadyQueueID, &SendQueueID, &ReceiveQueueID,&GUIID,&ArrivedProcessesID);
     initSync();
     struct process *keeper = NULL;
     int clk = 0;
@@ -197,7 +199,7 @@ void SRTN(int noOfProcesses)
 
         printf("Current clock = %d\n", clk);
         while (getSync() == 0);
-        while (ReceiveProcess(minHeap, ReadyQueueID,root,Waiting,&iterator,&totalmemory,f));
+        while (ReceiveProcess(minHeap, ReadyQueueID,root,Waiting,&iterator,&totalmemory,f,GUIID));
         if (minHeap->heap_size > 0)
         {
 
@@ -226,10 +228,11 @@ void SRTN(int noOfProcesses)
                 printf("Process with ID: %d has finished\n", currentProcess->id);
                 LogFinishedSRTN(currentProcess, noOfProcesses, &runningTimeSum, &WTASum, &waitingTimeSum, TAArray, &TAArrayIndex,deadProcess);
                 struct process Terminated = extractMin(minHeap, 1);
-                DeAllocateMemory(&Terminated,&totalmemory,f);
+                MemoryLogger(0,root,&Terminated,f);
+                DeAllocateMemory(&Terminated,&totalmemory);
                 remainingProcesses--;
                 wait(NULL);
-                CheckAllocation(minHeap,root,&iterator,Waiting,&totalmemory,f);
+                CheckAllocation(1,minHeap,root,&iterator,Waiting,&totalmemory,f,GUIID);
                 if (minHeap->heap_size != 0)
                 {
                     currentProcess = getMin_ptr(minHeap);

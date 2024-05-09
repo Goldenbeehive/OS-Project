@@ -233,11 +233,13 @@ void insertHPF(struct MinHeap* minHeap, struct process k)
  * @param Waiting  The waiting queue
  * @param f  The file pointer to the log file
  */
-void CheckAllocation(struct MinHeap* minHeap,struct Nodemem* root,int *iterator,struct process Waiting[],int* totalmemory,FILE* f){
+void CheckAllocation(bool SRTN,struct MinHeap* minHeap,struct Nodemem* root,int *iterator,struct process Waiting[],int* totalmemory,FILE* f,int GUIID){
     printf("Iterator = %d\n",*iterator);
     while (*iterator != 0){
-        if (AllocateMemory(root,Waiting[0].memsize,&Waiting[0],totalmemory,f)){
-            insertSRTN(minHeap, Waiting[0]);
+        if (AllocateMemory(root,Waiting[0].memsize,&Waiting[0],totalmemory)){
+            msgsnd(GUIID, &Waiting[0], sizeof(Waiting[0]), IPC_NOWAIT);
+            MemoryLogger(1,root,&Waiting[0],f);
+            if (SRTN) { insertSRTN(minHeap, Waiting[0]); } else { insertHPF(minHeap, Waiting[0]);}
             printf("Inserted process with id %d\n", Waiting[0].id);
             for (int i = 1; i < *iterator; i++)
             {

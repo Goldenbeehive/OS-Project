@@ -165,7 +165,10 @@ int main(void)
     int listViewActive2 = -1;
     int listViewScrollIndex3 = 0;
     int listViewActive3 = -1;
+    int listViewScrollIndex4 = 0;
+    int listViewActive4 = -1;
     char rdyList[5000] = "";
+    char arrivedList[5000] = "";
     pid_t ProcessGen;
     char doneList[5000] = "";
     char workingList[1024] = "n/a";
@@ -184,14 +187,23 @@ int main(void)
     Vector2 pointsCosine[screenWidth];
     struct process doneProcList[3000];
     struct process rdyProcList[3000];
+    struct process arrivedProcList[3000];
     int deadindex = 0;
     int rdyindex = 0;
-    key_t GUIKey;
-    int GUIID;
+    int arrivedindex = 0;
+    key_t GUIKey,ArrivedProcessesKey;
+    int GUIID,ArrivedProcessesID;
     GUIKey = ftok("keys/Guiman", 'A');
+    ArrivedProcessesKey = ftok("keys/Guiman", 'B');
     GUIID = msgget(GUIKey, 0666 | IPC_CREAT);
     printf("%i\n\n\n\n", GUIID);
     if (GUIID == -1)
+    {
+        perror("Error in create message queue");
+        exit(-1);
+    }
+    ArrivedProcessesID = msgget(ArrivedProcessesKey, 0666 | IPC_CREAT);
+    if (ArrivedProcessesID == -1)
     {
         perror("Error in create message queue");
         exit(-1);
@@ -241,7 +253,7 @@ int main(void)
             for (int i = 0; i < rdyindex; i++)
             {
                 char temp[1000];
-                if (true){//rdyProcList[i].mem->taken){
+                if (rdyProcList[i].mem != NULL){
                     sprintf(temp, "P%d - %d bytes;", rdyProcList[i].id,rdyProcList[i].memsize);
                     strcat(memList, temp);
                 }
@@ -253,6 +265,18 @@ int main(void)
                 strcat(rdyList, temp);
             }
         }
+        received = msgrcv(ArrivedProcessesID, &ArrivedProcess, sizeof(ArrivedProcess), 0, IPC_NOWAIT);
+        if (received != -1)
+        {
+            addProcess(ArrivedProcess, &arrivedindex, arrivedProcList);
+            clearCharArray(arrivedList,5000);
+            for (int i = 0; i < arrivedindex; i++)
+            {
+                char temp[1000];
+                sprintf(temp, "P%d;", arrivedProcList[i].id);
+                strcat(arrivedList, temp);
+            }
+        }
 
         if (*runningProcess != -1)
         {
@@ -260,10 +284,17 @@ int main(void)
 
             clearCharArray(rdyList, 5000);
             clearCharArray(memList, 5000);
+            clearCharArray(arrivedList,5000);
+            for (int i = 0 ; i < arrivedindex ; i++)
+            {
+                char temp[1000];
+                sprintf(temp, "P%d;", arrivedProcList[i].id);
+                strcat(arrivedList, temp);
+            }
             for (int i = 0; i < rdyindex; i++)
             {
                 char temp[1000];
-                if (true){//rdyProcList[i].mem->taken){
+                if (rdyProcList[i].mem != NULL){
                     sprintf(temp, "P%d - %d bytes;", rdyProcList[i].id,rdyProcList[i].memsize);
                     strcat(memList, temp);
                 }
@@ -285,6 +316,7 @@ int main(void)
             x.id = *deadProcess;
             addProcess(x, &deadindex, doneProcList);
             removeProcessByID(x.id, &rdyindex, rdyProcList);
+            removeProcessByID(x.id, &arrivedindex, arrivedProcList);
             clearCharArray(doneList, 5000);
             for (int i = 0; i < deadindex; i++)
             {
@@ -511,8 +543,10 @@ int main(void)
             DrawText(workingList, 310, 235, 20, PURPLE);
             GuiGroupBox((Rectangle){120, 400, 400, 300}, "Done Processes");
             GuiListView((Rectangle){120, 420, 400, 300}, doneList, &listViewScrollIndex, &listViewActive);
-            GuiGroupBox((Rectangle){screenWidth - 550, 150, 400, 300}, "RDY Queue");
-            GuiListView((Rectangle){screenWidth - 550, 150 + 20, 400, 300}, rdyList, &listViewScrollIndex2, &listViewActive2);
+            GuiGroupBox((Rectangle){screenWidth - 550, 150, 200, 300}, "RDY Queue");
+            GuiListView((Rectangle){screenWidth - 550, 150 + 20, 200, 300}, rdyList, &listViewScrollIndex2, &listViewActive2);
+            GuiGroupBox((Rectangle){screenWidth - 300, 150, 200, 300}, "Arrived Queue");
+            GuiListView((Rectangle){screenWidth - 300, 150 + 20, 200, 300}, arrivedList, &listViewScrollIndex4, &listViewActive4);
             GuiGroupBox((Rectangle){screenWidth - 550, 500, 400, 200}, "Memory");
             GuiListView((Rectangle){screenWidth - 550, 500 + 20, 400, 200}, memList, &listViewScrollIndex3, &listViewActive3);
             //DrawText("MEM WIP", screenWidth - 550 + 150, 590, 20, RED);
