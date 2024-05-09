@@ -114,17 +114,14 @@ bool ReceiveProcess(struct MinHeap *minHeap, int ReadyQueueID, struct Nodemem* r
     if (received != -1)
     {
         printf("Process with id %d has arrived\n", ArrivedProcess.id);
-        char RunningTimeStr[12];
-        sprintf(RunningTimeStr, "%d", ArrivedProcess.runningtime);
-        char *args[3] = {"./process.out", RunningTimeStr, NULL};
-        pid_t pid = fork();
-        if (pid == 0)
-        {
-            execv(args[0], args);
-        }
-        ArrivedProcess.pid = pid;
         if (AllocateMemory(root,ArrivedProcess.memsize,&ArrivedProcess,totalmemory)){ 
             msgsnd(GUIID, &ArrivedProcess, sizeof(ArrivedProcess), IPC_NOWAIT);
+            char RunningTimeStr[12];
+            sprintf(RunningTimeStr, "%d", ArrivedProcess.runningtime);
+            char *args[3] = {"./process.out", RunningTimeStr, NULL};
+            pid_t pid = fork();
+            if (pid == 0) {execv(args[0], args); }
+            ArrivedProcess.pid = pid;
             printf("At time %d allocated %d bytes for process %d\n",getClk(),ArrivedProcess.memsize,ArrivedProcess.id);
             MemoryLogger(1,root,&ArrivedProcess,f);
             insertSRTN(minHeap, ArrivedProcess);
@@ -202,7 +199,6 @@ void SRTN(int noOfProcesses)
         while (ReceiveProcess(minHeap, ReadyQueueID,root,Waiting,&iterator,&totalmemory,f,GUIID));
         if (minHeap->heap_size > 0)
         {
-
             currentProcess = getMin_ptr(minHeap);
             if (keeper == NULL)
             {

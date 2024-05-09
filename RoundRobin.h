@@ -203,27 +203,27 @@ void RoundRobin(int quantum, int processCount)
             {
                 // If process was received, add it to the running list and Fork it to start its execution
                 printf("Process with ID: %d has arrived\n", rec.id);
-                pid_t pid = fork();
-                if (pid == -1)
-                {
-                    // Fork failed
-                    perror("fork");
-                }
-                if (pid == 0)
-                {
-                    // This is the code executed by the child, which will be replaced by the process
-                    char RunningTimeStr[20]; // Assuming 20 characters is enough for the string representation of currentProcess.runningtime
-                    sprintf(RunningTimeStr, "%d", rec.runningtime);
-                    // printf("I'm child, my time is %s\n", RunningTimeStr);
-                    char *args[] = {"./process.out", RunningTimeStr, NULL, NULL}; // NULL terminator required for the args array
-                    execv(args[0], args);
-                    // If execv returns, it means there was an error
-                    perror("execv");
-                    exit(EXIT_FAILURE); // Exit child process with failure
-                }
-                rec.pid = pid; // Assign the PID of the child process to the process struct
                 if (AllocateMemory(root,rec.memsize,&rec,&totalmemory)){
                     msgsnd(GUIID, &rec, sizeof(rec), IPC_NOWAIT);
+                    pid_t pid = fork();
+                    if (pid == -1)
+                    {
+                        // Fork failed
+                        perror("fork");
+                    }
+                    if (pid == 0)
+                    {
+                        // This is the code executed by the child, which will be replaced by the process
+                        char RunningTimeStr[20]; // Assuming 20 characters is enough for the string representation of currentProcess.runningtime
+                        sprintf(RunningTimeStr, "%d", rec.runningtime);
+                        // printf("I'm child, my time is %s\n", RunningTimeStr);
+                        char *args[] = {"./process.out", RunningTimeStr, NULL, NULL}; // NULL terminator required for the args array
+                        execv(args[0], args);
+                        // If execv returns, it means there was an error
+                        perror("execv");
+                        exit(EXIT_FAILURE); // Exit child process with failure
+                    }
+                    rec.pid = pid; // Assign the PID of the child process to the process struct
                     insertAtEnd(Running_List, rec);
                     MemoryLogger(1,root,&rec,f);
                     displayList(Running_List);

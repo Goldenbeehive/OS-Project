@@ -19,10 +19,10 @@ void clearLogFile()
     fclose(filePointer);
 }
 /**
- * @brief Logs the start time and details of a process to the "scheduler.log" file
- *
- * @param proc The process structure containing details of the process being logged
- * @return void
+ * @brief  Logs the start of a process in the log file
+ * 
+ * @param proc The process that has started 
+ * @param shared  The shared memory that contains the id of the process
  */
 void LogStarted(struct process proc,int*shared)
 {
@@ -40,11 +40,16 @@ void LogStarted(struct process proc,int*shared)
     fclose(filePointer);
 }
 /**
- * @brief Logs the finish time, turnaround time, and details of a process to the "scheduler.log" file
- *
- * @param proc The process structure containing details of the finished process
- * @param noOfProcesses The total number of processes
- * @return void
+ * @brief 
+ * 
+ * @param proc  The process that has finished
+ * @param noOfProcesses  The number of processes to be scheduled
+ * @param runningTimeSum  The sum of the running time of all processes
+ * @param WTASum  The sum of the weighted turnaround time of all processes 
+ * @param waitingTimeSum  The sum of the waiting time of all processes
+ * @param TAArray  The array that contains the Turnaround time of each process
+ * @param TAArrayIndex  The index of the TAArray
+ * @param shared  The shared memory that contains the id of the process
  */
 void LogFinished(struct process proc, int noOfProcesses, int *runningTimeSum, float *WTASum, int *waitingTimeSum, float TAArray[], int *TAArrayIndex,int*shared)
 {
@@ -72,12 +77,18 @@ void LogFinished(struct process proc, int noOfProcesses, int *runningTimeSum, fl
 }
 
 /**
- * @brief Inserts the arrived process in the MinHeap
- *
- * @param minHeap  The MinHeap to insert the process in
- * @param ReadyQueueID  The ID of the Ready Queue
- * @return true
- * @return false
+ * @brief  The Highest Priority First Scheduling Algorithm
+ * 
+ * @param minHeap  The min heap that contains the processes
+ * @param ReadyQueueID  The ID of the message queue that contains the ready processes
+ * @param root  The root of the memory tree
+ * @param Waiting  The array of waiting processes
+ * @param iterator  The iterator of the waiting processes array
+ * @param totalmemory  The total memory size
+ * @param f  The memory log file
+ * @param GUIID  The ID of the message queue that communicates with the GUI
+ * @return true 
+ * @return false 
  */
 bool ReceiveProcessHPF(struct MinHeap *minHeap, int ReadyQueueID, struct Nodemem* root, struct process Waiting[], int *iterator,int* totalmemory,FILE* f,int GUIID)
 {
@@ -86,18 +97,18 @@ bool ReceiveProcessHPF(struct MinHeap *minHeap, int ReadyQueueID, struct Nodemem
     if (received != -1)
     {
         printf("Process with id %d has arrived\n", ArrivedProcess.id);
-        char RunningTimeStr[12];
-        sprintf(RunningTimeStr, "%d", ArrivedProcess.runningtime);
-        char *args[3] = {"./process.out", RunningTimeStr, NULL};
-        pid_t pid = fork();
-        if (pid == 0)
-        {
-            execv(args[0], args);
-        }
-        ArrivedProcess.pid = pid;
         if (AllocateMemory(root, ArrivedProcess.memsize, &ArrivedProcess,totalmemory))
         {
             msgsnd(GUIID, &ArrivedProcess, sizeof(ArrivedProcess), IPC_NOWAIT);
+            char RunningTimeStr[12];
+            sprintf(RunningTimeStr, "%d", ArrivedProcess.runningtime);
+            char *args[3] = {"./process.out", RunningTimeStr, NULL};
+            pid_t pid = fork();
+            if (pid == 0)
+            {
+                execv(args[0], args);
+            }
+            ArrivedProcess.pid = pid;
             MemoryLogger(1,root,&ArrivedProcess,f);
             insertHPF(minHeap, ArrivedProcess);
             printf("Inserted process with id %d\n", ArrivedProcess.id);

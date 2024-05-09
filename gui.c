@@ -26,7 +26,7 @@ int *clkptr;
 int clkid;
 int clkFound = 0;
 float cpu_utilization = 0.0f, avg_wta = 0.0f, avg_waiting = 0.0f, std_wta = 0.0f;
-
+float memoryutilization = 0.0f,memorytaken = 0.0f;
 struct Nodemem
 {
     int memorysize;
@@ -52,7 +52,7 @@ struct process
     int turnaroundtime;
     int lasttime;
     int flag;
-    int memsize;
+    int memsize,memoryused;
     struct Nodemem* mem;
 };
 int isInteger(const char *str)
@@ -291,11 +291,12 @@ int main(void)
                 sprintf(temp, "P%d;", arrivedProcList[i].id);
                 strcat(arrivedList, temp);
             }
+            memoryutilization = 0, memorytaken = 0;
             for (int i = 0; i < rdyindex; i++)
             {
                 char temp[1000];
                 if (rdyProcList[i].mem != NULL){
-                    sprintf(temp, "P%d - %d bytes;", rdyProcList[i].id,rdyProcList[i].memsize);
+                    sprintf(temp, "P%d - %d byte(s) - %d byte(s);", rdyProcList[i].id,rdyProcList[i].memsize,rdyProcList[i].memoryused);
                     strcat(memList, temp);
                 }
                 if (rdyProcList[i].id == *runningProcess)
@@ -325,7 +326,17 @@ int main(void)
                 strcat(doneList, temp);
             }
         }
-
+        for (int i = 0 ; i < arrivedindex ; i++){
+            for (int j = 0 ; j < rdyindex ; j++){
+                if (arrivedProcList[i].id == rdyProcList[j].id){ removeProcessByID(arrivedProcList[i].id,&arrivedindex,arrivedProcList);}
+            }
+        }
+        for (int i = 0 ; i < rdyindex ; i++){
+            memoryutilization += (float)rdyProcList[i].memsize;
+            memorytaken += (float)rdyProcList[i].memoryused;
+        }
+        memoryutilization = memoryutilization/1024 * 100;
+        memorytaken = memorytaken/1024 * 100;
         BeginDrawing();
         DrawFPS(0, 0);
         for (int x = 0; x < endOfAnimWidth; x++)
@@ -527,6 +538,11 @@ int main(void)
             sprintf(timetemp, "Current CLK : %i", *clkptr);
             GuiLabel((Rectangle){120, 100, 600, 30}, timetemp);
             GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
+            sprintf(timetemp, "Memory Taken : %.2f%%", memorytaken);
+            GuiLabel((Rectangle){screenWidth - 550, 100, 600, 30}, timetemp);
+            sprintf(timetemp, "Memory Utilization : %.2f%%", memoryutilization);
+            GuiLabel((Rectangle){screenWidth - 300, 100, 600, 30}, timetemp);
+            GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
             ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
             /* Top buttons*/
             if (GuiButton((Rectangle){screenWidth - 120, 30, 100, 40}, "Close"))
@@ -545,10 +561,10 @@ int main(void)
             GuiListView((Rectangle){120, 420, 400, 300}, doneList, &listViewScrollIndex, &listViewActive);
             GuiGroupBox((Rectangle){screenWidth - 550, 150, 200, 300}, "RDY Queue");
             GuiListView((Rectangle){screenWidth - 550, 150 + 20, 200, 300}, rdyList, &listViewScrollIndex2, &listViewActive2);
-            GuiGroupBox((Rectangle){screenWidth - 300, 150, 200, 300}, "Arrived Queue");
+            GuiGroupBox((Rectangle){screenWidth - 300, 150, 200, 300}, "WTN Queue");
             GuiListView((Rectangle){screenWidth - 300, 150 + 20, 200, 300}, arrivedList, &listViewScrollIndex4, &listViewActive4);
-            GuiGroupBox((Rectangle){screenWidth - 550, 500, 400, 200}, "Memory");
-            GuiListView((Rectangle){screenWidth - 550, 500 + 20, 400, 200}, memList, &listViewScrollIndex3, &listViewActive3);
+            GuiGroupBox((Rectangle){screenWidth - 550, 500, 450, 200}, "MEM Used");
+            GuiListView((Rectangle){screenWidth - 550, 500 + 20, 450, 200}, memList, &listViewScrollIndex3, &listViewActive3);
             //DrawText("MEM WIP", screenWidth - 550 + 150, 590, 20, RED);
         }
         if (pageShifter == 3)

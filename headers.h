@@ -30,7 +30,11 @@ int * shmaddr;                 //
 //===============================
 
 
-
+/**
+ * @brief Get the Clk object
+ * 
+ * @return int 
+ */
 int getClk()
 {
     return *shmaddr;
@@ -55,14 +59,11 @@ void initClk()
 }
 
 
-/*
- * All process call this function at the end to release the communication
- * resources between them and the clock module.
- * Again, Remember that the clock is only emulation!
- * Input: terminateAll: a flag to indicate whether that this is the end of simulation.
- *                      It terminates the whole system and releases resources.
-*/
-
+/**
+ * @brief  Destroy the clock (Detach/Destroy)
+ * 
+ * @param terminateAll  A flag to indicate whether that this is the end of simulation
+ */
 void destroyClk(bool terminateAll)
 {
     shmdt(shmaddr);
@@ -89,7 +90,7 @@ struct process
     int turnaroundtime;
     int lasttime;
     int flag;
-    int memsize;
+    int memsize,memoryused;
     struct Nodemem *mem;
 };
 struct msg
@@ -272,7 +273,7 @@ struct Nodemem
  * @brief  Initialize the memory tree
  * 
  * @param memavailable  The total memory available
- * @param isLeft  A boolean to indicate if the current node is a left node
+ * @param nodenumber  The number of the node
  * @return struct Nodemem* 
  */
 struct Nodemem* InitialiseMemory(int memavailable,int nodenumber)
@@ -311,21 +312,6 @@ void SetChildrenFree(struct Nodemem* root){
 }
 
 /**
- * @brief  Check if a node is on the left side of the tree
- * 
- * @param root  The root of the memory tree
- * @param node  The node to check
- * @param condition Condition that is initially true but set as false if the function starts checking in the right side of the root
- * @return true 
- * @return false 
- */
-bool CheckifonLeftSide(struct Nodemem* root, struct Nodemem* node) {
-    if (root == NULL) {return false; }
-    if (root == node) { return true; }
-    return CheckifonLeftSide(root->left, node);
-}
-
-/**
  * @brief  Check if memory is available for a process
  * 
  * @param root  The root of the memory tree
@@ -358,11 +344,10 @@ void ClearMemory(struct Nodemem* root)
 /**
  * @brief  Allocate memory for a process
  * 
- * @param root  The root of the memory tree
+ * @param root The root of the memory tree
  * @param memrequired  The memory required by the process
  * @param p  The process that needs the memory
  * @param totalmemory  The total memory available
- * @param f  The file pointer to the log file
  * @return true 
  * @return false 
  */
@@ -374,8 +359,15 @@ bool AllocateMemory(struct Nodemem* root, int memrequired,struct process* p,int*
         if (root->taken) { return false; }
         if (CheckMemoryAvailability(root)){
             SetChildrenAsTaken(root);
+            char RunningTimeStr[12];
+            sprintf(RunningTimeStr, "%d", p->runningtime);
+            char *args[3] = {"./process.out", RunningTimeStr, NULL};
+            pid_t pid = fork();
+            if (pid == 0){ execv(args[0], args);}
+            p->pid = pid;
             *totalmemory -= root->memorysize;
             p->mem = root;
+            p->memoryused = root->memorysize;
             return true;
         }
         return false;
@@ -386,7 +378,14 @@ bool AllocateMemory(struct Nodemem* root, int memrequired,struct process* p,int*
         else {
             if (CheckMemoryAvailability(root)){
                 SetChildrenAsTaken(root);
+                char RunningTimeStr[12];
+                sprintf(RunningTimeStr, "%d", p->runningtime);
+                char *args[3] = {"./process.out", RunningTimeStr, NULL};
+                pid_t pid = fork();
+                if (pid == 0){ execv(args[0], args);}
+                p->pid = pid;
                 p->mem = root;
+                p->memoryused = root->memorysize;
                 *totalmemory -= root->memorysize;
                 return true;
             }
@@ -415,20 +414,11 @@ void MemoryLogger(bool allocate,struct Nodemem* root, struct process* p,FILE* f)
     else { fprintf(f,"At time %d freed %d bytes for process %d from %d to %d\n",getClk(),p->memsize,p->id,memstart,memend); }
 }
 
-void PrintMemory(struct Nodemem* root)
-{
-    if (root == NULL) { return; }
-    printf("Memory size: %d, Taken: %d\n", root->memorysize, root->taken);
-    PrintMemory(root->left);
-    PrintMemory(root->right);
-}
-
 /**
  * @brief  Deallocate memory for a process
  * 
  * @param p  The process that needs the memory
- * @param totalmemory  The total memory available
- * @param f  The file pointer to the log file
+ * @param totalmemory The total memory available 
  * @return true 
  * @return false 
  */
@@ -436,6 +426,7 @@ bool DeAllocateMemory(struct process* p,int* totalmemory){
     if (p->mem->taken){ 
         SetChildrenFree(p->mem);
         *totalmemory += p->mem->memorysize;
+        p->memoryused = 0;
         return true;
     }
     else { return false; }
