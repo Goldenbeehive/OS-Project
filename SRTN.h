@@ -212,12 +212,7 @@ void SRTN(int noOfProcesses)
                 LogStartedSRTN(currentProcess, runningProcess);
                 *keeper = *currentProcess;
             }
-            struct msgbuff receivedmsg;
-            int received = msgrcv(ReceiveQueueID, &receivedmsg, sizeof(receivedmsg.msg), 0, IPC_NOWAIT);
-            if (received != -1)
-            {
-                currentProcess->remainingtime = receivedmsg.msg;
-            }
+            
 
             if (currentProcess->remainingtime <= 0)
             {
@@ -247,6 +242,13 @@ void SRTN(int noOfProcesses)
             // Send the turn to the current process
             int send = msgsnd(SendQueueID, &sendmsg, sizeof(sendmsg.msg), IPC_NOWAIT);
             printf("Process %d with pid = %d is running\n", currentProcess->id, currentProcess->pid);
+            struct msgbuff receivedmsg;
+            int received = msgrcv(ReceiveQueueID, &receivedmsg, sizeof(receivedmsg.msg), 0, !IPC_NOWAIT);
+            if (received != -1)
+            {
+                currentProcess->remainingtime = receivedmsg.msg;
+                printf("Process with id %d has received remaining time = %d\n", currentProcess->id, currentProcess->remainingtime);
+            }
         }
         while (clk == getClk())
             ;
